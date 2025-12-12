@@ -10,12 +10,12 @@ interface WordleGridProps {
 const WordleGrid = ({ guesses, currentGuess, maxAttempts, targetWord, shake, revealedLetters }: WordleGridProps) => {
   const getCellColor = (letter: string, index: number, guess: string) => {
     if (targetWord[index] === letter) {
-      return "bg-[#6aaa64] border-white/40 text-white shadow-lg";
+      return "bg-[#6aaa64] border-[#4d7c45] text-white shadow-lg ring-1 ring-white/70";
     }
     if (targetWord.includes(letter)) {
-      return "bg-[#c9b458] border-white/40 text-white shadow-lg";
+      return "bg-[#c9b458] border-[#9f8933] text-white shadow-lg ring-1 ring-white/70";
     }
-    return "bg-[#787c7e] border-white/30 text-white shadow-lg";
+    return "bg-[#787c7e] border-[#5a5d60] text-white shadow-lg ring-1 ring-white/70";
   };
 
   const rows = Array.from({ length: maxAttempts }, (_, i) => {
@@ -68,16 +68,17 @@ const WordleGrid = ({ guesses, currentGuess, maxAttempts, targetWord, shake, rev
                 <div
                   key={colIndex}
                   className={`
-                    w-16 h-16 md:w-20 md:h-20 border-3 flex items-center justify-center
-                    text-2xl md:text-3xl font-bold transition-all duration-300
+                    w-11 h-11 sm:w-13 sm:h-13 md:w-15 md:h-15 border-3 flex items-center justify-center
+                    text-xl md:text-2xl font-bold transition-all duration-300
+                    shadow-inner shadow-[inset_0_2px_6px_rgba(0,0,0,0.35)]
                     ${
                       isSubmittedRow
                         ? getCellColor(letter, colIndex, row)
                         : isRevealed
-                        ? "bg-[#6aaa64] border-white/40 text-white shadow-lg"
+                        ? "bg-[#6aaa64] border-[#4d7c45] text-white shadow-lg ring-1 ring-white/70"
                         : hasLetter
-                        ? "border-white/60 bg-white/10 text-white scale-105 shadow-md"
-                        : "border-white/30 bg-white/5 backdrop-blur-sm text-white"
+                        ? "border-white bg-[#f7e9a3] text-[#2f2400] scale-105 shadow-inner shadow-[inset_0_3px_8px_rgba(0,0,0,0.4)]"
+                        : "border-white bg-[#f2e6b3] backdrop-blur-sm text-white shadow-inner shadow-[inset_0_2px_6px_rgba(0,0,0,0.35)]"
                     }
                   `}
                   style={{

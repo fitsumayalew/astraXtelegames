@@ -5,6 +5,9 @@ interface WordleKeyboardProps {
   onKeyPress: (key: string) => void;
   letterStatus: Map<string, "correct" | "present" | "absent">;
   disabled: boolean;
+  targetWord: string;
+  revealedLetters: Set<number>;
+  searchClues?: Set<string>;
 }
 
 const KEYBOARD_ROWS = [
@@ -13,13 +16,23 @@ const KEYBOARD_ROWS = [
   ["ENTER", "Z", "X", "C", "V", "B", "N", "M", "⌫"],
 ];
 
-const WordleKeyboard = ({ onKeyPress, letterStatus, disabled }: WordleKeyboardProps) => {
+const WordleKeyboard = ({ onKeyPress, letterStatus, disabled, targetWord, revealedLetters, searchClues = new Set() }: WordleKeyboardProps) => {
   const getKeyColor = (key: string) => {
+    // Check if this letter is revealed as a hint
+    const revealedLettersArray = Array.from(revealedLetters).map(i => targetWord[i]);
+    if (revealedLettersArray.includes(key)) {
+      return "bg-[#6aaa64] hover:bg-[#5a9a54] text-white border-green-300 shadow-md";
+    }
+    
+    if (searchClues.has(key)) {
+      return "bg-cyan-500 hover:bg-cyan-400 text-white border-green-200 shadow-md";
+    }
+
     const status = letterStatus.get(key);
-    if (status === "correct") return "bg-[#6aaa64] hover:bg-[#5a9a54] text-white border-white/30 shadow-md";
-    if (status === "present") return "bg-[#c9b458] hover:bg-[#b9a448] text-white border-white/30 shadow-md";
-    if (status === "absent") return "bg-[#787c7e] hover:bg-[#686c7e] text-white/70 border-white/20";
-    return "bg-white/10 backdrop-blur-sm hover:bg-white/20 border-white/30 hover:border-white/50 text-white hover:shadow-md transition-all";
+    if (status === "correct") return "bg-[#6aaa64] hover:bg-[#5a9a54] text-white border-green-300 shadow-md";
+    if (status === "present") return "bg-[#c9b458] hover:bg-[#b9a448] text-white border-green-200 shadow-md";
+    if (status === "absent") return "bg-[#787c7e] hover:bg-[#686c6e] text-white/80 border-green-200/60";
+    return "bg-green-50 text-green-900 border-green-300 hover:bg-green-100 hover:border-green-400 hover:shadow-md transition-all";
   };
 
   return (
@@ -34,14 +47,14 @@ const WordleKeyboard = ({ onKeyPress, letterStatus, disabled }: WordleKeyboardPr
                 onClick={() => onKeyPress(key)}
                 disabled={disabled}
                 className={`
-                  ${isSpecial ? "px-2 md:px-3 flex-1 max-w-[60px] md:max-w-[72px]" : "flex-1 max-w-[34px] md:max-w-[46px] p-0"}
-                  h-10 md:h-12 rounded-lg
-                  font-bold text-sm md:text-base transition-all border-2
+                  ${isSpecial ? "px-3 md:px-5 flex-1 max-w-[80px] md:max-w-[95px]" : "flex-1 max-w-[46px] md:max-w-[60px] p-0"}
+                  h-14 md:h-16 rounded-lg
+                  font-bold text-base md:text-lg transition-all border-2
                   ${getKeyColor(key)}
                 `}
                 variant="outline"
               >
-                {key === "⌫" ? <Delete className="w-4 h-4 md:w-5 md:h-5" /> : key}
+                {key === "⌫" ? <Delete className="w-6 h-6 md:w-7 md:h-7" /> : key}
               </Button>
             );
           })}

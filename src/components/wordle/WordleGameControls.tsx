@@ -1,67 +1,68 @@
-import { Timer, Lightbulb, Search } from "lucide-react";
+import { Coins, Lightbulb, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface WordleGameControlsProps {
-  timeLeft: number;
   onHint: () => void;
   onSearch: () => void;
-  hintsUsed: number;
-  searchesUsed: number;
   freeAssistsLeft: number;
-  assistCost: number;
   canUseHint: boolean;
   canUseSearch: boolean;
+  assistCost: number;
 }
 
 const WordleGameControls = ({
-  timeLeft,
   onHint,
   onSearch,
-  hintsUsed,
-  searchesUsed,
   freeAssistsLeft,
-  assistCost,
   canUseHint,
   canUseSearch,
+  assistCost,
 }: WordleGameControlsProps) => {
-  return (
-    <div className="flex items-center justify-center gap-3 md:gap-4 mb-4 flex-wrap">
-      <div className="flex items-center gap-2 bg-gradient-to-r from-primary/10 to-primary/5 rounded-full px-4 md:px-6 py-2 md:py-3 border border-primary/20">
-        <Timer className="w-5 h-5 md:w-6 md:h-6 text-primary" />
-        <span className={`font-bold text-lg md:text-2xl ${timeLeft <= 10 ? "text-destructive animate-pulse" : "text-foreground"}`}>
-          {timeLeft}s
-        </span>
-      </div>
+  const buttonClass =
+    "relative h-14 w-14 md:h-16 md:w-16 rounded-full bg-green-600 hover:bg-green-500 text-white shadow-lg border-2 border-green-500 disabled:opacity-60 disabled:cursor-not-allowed";
 
+  const renderBadge = () => {
+    if (freeAssistsLeft > 0) {
+      return (
+        <span className="absolute -top-1 -right-1 flex h-6 min-w-[24px] items-center justify-center rounded-full bg-red-500 text-xs font-bold leading-none text-white shadow">
+          {freeAssistsLeft}
+        </span>
+      );
+    }
+
+    return (
+      <span className="absolute -top-1 -right-1 flex h-6 min-w-[30px] items-center gap-1 justify-center rounded-full bg-amber-300 text-[11px] font-bold leading-none text-amber-950 shadow">
+        <Coins className="h-3.5 w-3.5 text-amber-700" />
+        {assistCost}
+      </span>
+    );
+  };
+
+  return (
+    <div className="flex items-center justify-center gap-4 md:gap-6 mt-3">
       <Button
+        aria-label="Use search assist"
         onClick={onSearch}
         disabled={!canUseSearch}
-        variant="secondary"
-        size="lg"
-        className="gap-2 px-4 md:px-6"
+        variant="ghost"
+        size="icon"
+        className={buttonClass}
       >
-        <Search className="w-4 h-4 md:w-5 md:h-5" />
-        <span className="text-sm md:text-base">
-          Search ({searchesUsed})
-        </span>
+        {renderBadge()}
+        <Search className="w-8 h-8 md:w-10 md:h-10" />
       </Button>
 
       <Button
+        aria-label="Use hint assist"
         onClick={onHint}
         disabled={!canUseHint}
-        variant="outline"
-        size="lg"
-        className="gap-2 px-4 md:px-6"
+        variant="ghost"
+        size="icon"
+        className={buttonClass}
       >
-        <Lightbulb className="w-4 h-4 md:w-5 md:h-5" />
-        <span className="text-sm md:text-base">
-          Hint ({hintsUsed})
-        </span>
+        {renderBadge()}
+        <Lightbulb className="w-8 h-8 md:w-10 md:h-10" />
       </Button>
-
-      <div className="text-xs md:text-sm text-foreground/80 bg-white/10 px-3 py-2 rounded-full border border-white/20">
-        Free assists left: {freeAssistsLeft} {freeAssistsLeft === 0 ? `(then ${assistCost} coins)` : ""}
-      </div>
     </div>
   );
 };

@@ -20,8 +20,6 @@ interface GameStartScreenProps {
   startButtonDisabled?: boolean;
   startButtonIcon?: ReactNode;
   startButtonIconOnly?: boolean;
-  /** Optional coin cost badge shown above the start button. */
-  startCost?: number;
   instructionLayout?: "carousel" | "list";
   hideHero?: boolean;
   theme?: {
@@ -55,7 +53,6 @@ const GameStartScreen = ({
   startButtonDisabled = false,
   startButtonIcon = null,
   startButtonIconOnly = false,
-  startCost,
   instructionLayout = "carousel",
   hideHero = false,
   backgroundOpacity = 1,
@@ -71,7 +68,7 @@ const GameStartScreen = ({
 
   const buttonContent = startButtonIconOnly ? (
     <>
-      {startButtonIcon ?? <Play className="h-16 w-16 animate-pulse-icon" />}
+      {startButtonIcon ?? <Play className="h-14 w-14 animate-pulse-icon" />}
       <span className="sr-only">{startButtonText}</span>
     </>
   ) : (
@@ -79,8 +76,8 @@ const GameStartScreen = ({
   );
 
   const buttonClasses = startButtonIconOnly
-    ? "h-24 w-24 rounded-full p-0 text-xl font-black bg-gradient-to-br from-[#15803d] via-[#22c55e] to-[#34d399] hover:brightness-110 transition-all shadow-2xl hover:shadow-emerald-600/60 disabled:opacity-60 border-[6px] border-emerald-200 ring-4 ring-emerald-400/70 ring-offset-2 ring-offset-white"
-    : "w-full h-16 text-lg font-bold bg-gradient-to-br from-[#15803d] via-[#22c55e] to-[#34d399] hover:brightness-110 transition-all shadow-xl hover:shadow-emerald-600/50 disabled:opacity-60 border-[6px] border-emerald-200";
+    ? "h-20 w-20 rounded-full p-0 text-lg font-bold bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 border-2 border-white/80"
+    : "w-full h-14 text-lg font-bold bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 border-2 border-white/80";
 
   const renderInstructions = () => {
     if (!instructions.length) return null;
@@ -187,22 +184,14 @@ const GameStartScreen = ({
 
       {/* Start Button */}
       <div className="pt-4 pb-6 flex justify-center relative z-10 mt-auto">
-        <div className="relative inline-flex flex-col items-center">
-          {startCost !== undefined && startCost > 0 && (
-            <div className="absolute -top-4 flex items-center gap-1 rounded-full bg-amber-300 text-amber-950 text-xs font-bold leading-none shadow border border-amber-500/70 px-3 py-1">
-              <span className="inline-block w-2 h-2 rounded-full bg-amber-700" aria-hidden />
-              {startCost} coins
-            </div>
-          )}
-          <Button
-            onClick={onStartGame}
-            size="lg"
-            disabled={startButtonDisabled}
-            className={`${buttonClasses} animate-pulse-wordle-btn`}
-          >
-            <span className="flex items-center justify-center">{buttonContent}</span>
-          </Button>
-        </div>
+        <Button
+          onClick={onStartGame}
+          size="lg"
+          disabled={startButtonDisabled}
+          className={`${buttonClasses} border-4 border-yellow-400 animate-pulse-wordle-btn`}
+        >
+          <span className="flex items-center justify-center">{buttonContent}</span>
+        </Button>
       </div>
 
       {/* Animations CSS */}
@@ -223,8 +212,8 @@ const GameStartScreen = ({
           animation: wordleBgOut 0.8s cubic-bezier(.4,0,.2,1);
         }
         @keyframes pulseBtn {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.65); }
-          50% { box-shadow: 0 0 22px 10px rgba(16, 185, 129, 0.35); }
+          0%, 100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
+          50% { box-shadow: 0 0 16px 8px rgba(255, 193, 7, 0.4); }
         }
         .animate-pulse-wordle-btn {
           animation: pulseBtn 1.2s infinite;
