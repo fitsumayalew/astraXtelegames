@@ -1,0 +1,217 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 210 100% 97%;
+    --foreground: 210 20% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 20% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 20% 15%;
+
+    --primary: 82 65% 54%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 200 73% 48%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 82 65% 54%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 40% 90%;
+    --input: 210 40% 90%;
+    --ring: 82 65% 54%;
+
+    --radius: 1rem;
+
+    --gradient-primary: linear-gradient(135deg, hsl(82 65% 54%), hsl(82 65% 64%));
+    --gradient-secondary: linear-gradient(135deg, hsl(200 73% 48%), hsl(200 73% 58%));
+    --gradient-bg: linear-gradient(180deg, hsl(210 100% 97%), hsl(200 100% 95%));
+    --gradient-purple-space: linear-gradient(135deg, hsl(270 70% 25%), hsl(250 60% 35%));
+    
+    --shadow-glow: 0 10px 40px -10px hsl(82 65% 54% / 0.3);
+    --shadow-card: 0 4px 20px -4px hsl(210 20% 15% / 0.1);
+    --shadow-card-hover: 0 8px 30px -6px hsl(210 20% 15% / 0.15);
+    --shadow-purple-glow: 0 0 60px hsl(270 70% 50% / 0.3);
+    
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    --purple-deep: 270 70% 25%;
+    --purple-bright: 270 80% 60%;
+    --yellow-bright: 45 100% 60%;
+    --planet-pink: 340 80% 65%;
+  }
+
+  .dark {
+    --background: 210 30% 10%;
+    --foreground: 210 40% 98%;
+
+    --card: 210 25% 15%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 210 25% 15%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 82 65% 54%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 200 73% 48%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 210 25% 20%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 82 65% 54%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 210 25% 20%;
+    --input: 210 25% 20%;
+    --ring: 82 65% 54%;
+    
+    --gradient-purple-space: linear-gradient(135deg, hsl(270 70% 15%), hsl(250 60% 25%));
+    --shadow-purple-glow: 0 0 60px hsl(270 70% 40% / 0.4);
+    
+    --purple-deep: 270 70% 20%;
+    --purple-bright: 270 80% 65%;
+    --yellow-bright: 45 100% 65%;
+    --planet-pink: 340 80% 70%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Poppins', sans-serif;
+  }
+}
+
+@layer utilities {
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+  }
+
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
+
+  @keyframes bounce-in {
+    0% {
+      opacity: 0;
+      transform: scale(0.95) translateY(20px);
+    }
+    60% {
+      opacity: 1;
+      transform: scale(1.02) translateY(-5px);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .animate-bounce-in {
+    animation: bounce-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes heart-beat {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+  }
+
+  .animate-heart-beat {
+    animation: heart-beat 1.5s ease-in-out infinite;
+  }
+
+  @keyframes heart-break {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.2) rotate(-15deg); }
+    50% { transform: scale(0.8) rotate(15deg); }
+    75% { transform: scale(1.1) rotate(-10deg); }
+  }
+
+  .animate-heart-break {
+    animation: heart-break 0.6s ease-in-out;
+  }
+
+  @keyframes pulse-slow {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  .animate-pulse-slow {
+    animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes slide-in {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slide-in {
+    animation: slide-in 0.5s ease-out;
+  }
+
+  @keyframes coin-flight {
+    0% {
+      opacity: 1;
+      transform: translate(0, 0) scale(1);
+    }
+    60% {
+      transform: translate(calc(var(--tx) * 0.6 + var(--arc, 0px)), calc(var(--ty) * 0.6)) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(var(--tx), var(--ty)) scale(0.5);
+    }
+  }
+
+  .coin-flight {
+    position: fixed;
+    width: 18px;
+    height: 18px;
+    border-radius: 9999px;
+    background: radial-gradient(circle at 30% 30%, #fff7c2, #f6c744 60%, #d99c26 80%);
+    box-shadow: 0 0 16px rgba(255, 215, 0, 0.7);
+    animation: coin-flight 0.85s ease-in forwards;
+    animation-delay: var(--delay, 0s);
+    pointer-events: none;
+  }
+}
+
