@@ -9,6 +9,8 @@ interface GameStartScreenProps {
   description?: string;
   icon: LucideIcon;
   heroImage?: string;
+  /** Optional background image path (e.g., "/image/wordle.png"). */
+  backgroundImage?: string;
   instructions: Array<{
     icon: LucideIcon;
     title: string;
@@ -39,6 +41,10 @@ interface GameStartScreenProps {
    * Use a shorter min-height to avoid stacking with page headers.
    */
   compactHeight?: boolean;
+  /**
+   * Force showing the background image even when instructions/additional content exist.
+   */
+  showBackgroundAlways?: boolean;
 }
 
 const GameStartScreen = ({
@@ -46,6 +52,7 @@ const GameStartScreen = ({
   description,
   icon: Icon,
   heroImage,
+  backgroundImage,
   instructions,
   onStartGame,
   additionalContent,
@@ -58,9 +65,10 @@ const GameStartScreen = ({
   backgroundOpacity = 1,
   fullScreenBackground = false,
   compactHeight = false,
+  showBackgroundAlways = false,
 }: GameStartScreenProps) => {
   // Show background image on the first page (no instructions/additional content)
-  const showBgImage = instructions.length === 0 && !additionalContent;
+  const showBgImage = showBackgroundAlways || (instructions.length === 0 && !additionalContent);
 
   const heightClass = compactHeight
     ? "min-h-[calc(100vh-10rem)] md:min-h-[calc(100vh-12rem)]"
@@ -150,7 +158,7 @@ const GameStartScreen = ({
       {showBgImage && (
         <div
           className={`${fullScreenBackground ? "fixed" : "absolute"} inset-0 z-0 bg-center bg-cover animate-wordle-bg pointer-events-none`}
-          style={{ backgroundImage: `url(/image/wordle.png)`, opacity: backgroundOpacity }}
+          style={{ backgroundImage: `url(${backgroundImage ?? "/image/wordle.png"})`, opacity: backgroundOpacity }}
         ></div>
       )}
 
