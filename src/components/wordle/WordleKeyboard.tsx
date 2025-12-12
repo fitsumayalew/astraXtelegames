@@ -47,12 +47,12 @@ const WordleKeyboard = ({ onKeyPress, letterStatus, disabled, targetWord, reveal
                 key={key}
                 onClick={() => onKeyPress(key)}
                 disabled={disabled}
-                className={`
-                  ${isSpecial ? "px-3 md:px-5 flex-1 max-w-[80px] md:max-w-[95px]" : "flex-1 max-w-[46px] md:max-w-[60px] p-0"}
-                  h-14 md:h-16 rounded-lg
-                  font-bold text-base md:text-lg transition-all border-2
+                 className={`
+                  ${isSpecial ? "px-2.5 sm:px-3 md:px-5 flex-1 max-w-[72px] sm:max-w-[78px] md:max-w-[95px]" : "flex-1 max-w-[42px] sm:max-w-[48px] md:max-w-[60px] p-0"}
+                  h-12 sm:h-13 md:h-16 rounded-lg
+                  font-bold text-sm sm:text-base md:text-lg transition-all border-2
                   ${getKeyColor(key)}
-                `}
+                 `}
                 variant="outline"
               >
                 {key === "⌫" ? <Delete className="w-6 h-6 md:w-7 md:h-7" /> : key}

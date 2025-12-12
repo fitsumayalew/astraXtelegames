@@ -1,4 +1,6 @@
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8787";
+// Use relative base by default so Vite's dev proxy can avoid CORS.
+// Set VITE_API_BASE in production if the API lives on a different origin.
+const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 const USER_ID_KEY = "userId";
 
 export type WordleSession = {

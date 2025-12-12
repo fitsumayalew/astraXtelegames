@@ -19,7 +19,7 @@ const WordleGameControls = ({
   assistCost,
 }: WordleGameControlsProps) => {
   const buttonClass =
-    "relative h-14 w-14 md:h-16 md:w-16 rounded-full bg-green-600 hover:bg-green-500 text-white shadow-lg border-2 border-green-500 disabled:opacity-60 disabled:cursor-not-allowed";
+    "relative h-12 w-12 sm:h-13 sm:w-13 md:h-16 md:w-16 rounded-full bg-green-600 hover:bg-green-500 text-white shadow-lg border-2 border-green-500 disabled:opacity-60 disabled:cursor-not-allowed";
 
   const renderBadge = () => {
     if (freeAssistsLeft > 0) {

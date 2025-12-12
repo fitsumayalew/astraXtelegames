@@ -37,7 +37,7 @@ import {
 import wordleHero from "@/assets/wordle-hero.png";
 
 const MAX_ATTEMPTS = 6;
-const TIMER_DURATION_DEFAULT = 70; // backend ~70, falls back if missing
+const TIMER_DURATION_DEFAULT = 60; // enforce 60s per word
 const FREE_ASSISTS = 3; // backend free quota
 const ASSIST_COST = 10; // backend cost after free quota
 const WIN_REWARD = 50; // optional visual reward; backend owns coins
@@ -88,6 +88,7 @@ const WordleGame = () => {
   const [targetWord, setTargetWord] = useState<string>("");
   const [gameId, setGameId] = useState<string | null>(null);
   const [guesses, setGuesses] = useState<string[]>([]);
+  const [guessResults, setGuessResults] = useState<Array<Array<"correct" | "present" | "absent">>>([]);
   const [currentGuess, setCurrentGuess] = useState("");
   const [gameOver, setGameOver] = useState(false);
   const [won, setWon] = useState(false);
@@ -106,6 +107,9 @@ const WordleGame = () => {
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem("wordleSound") !== "off");
   const [coinBursts, setCoinBursts] = useState<CoinBurst[]>([]);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [hintInFlight, setHintInFlight] = useState(false);
+  const [searchInFlight, setSearchInFlight] = useState(false);
+  const timeoutHandledRef = useRef(false);
 
   // Keyboard listener
   const playSound = useCallback((sound: SoundKey) => {
@@ -177,12 +181,39 @@ const WordleGame = () => {
     }
   }, [playSound, triggerCoinBurst]);
 
+  const finalizeTimeout = useCallback(async () => {
+    if (timeoutHandledRef.current) return;
+    timeoutHandledRef.current = true;
+
+    setGameOver(true);
+    setWon(false);
+    setShowGameOver(true);
+    playSound("lose");
+
+    if (!gameId) return;
+
+    const remainingAttempts = Math.max(0, MAX_ATTEMPTS - guesses.length);
+    let lastTarget = "";
+
+    for (let i = 0; i < remainingAttempts; i++) {
+      try {
+        const res = await apiValidateWordleGuess({ guess: "BRING", gameId });
+        if (res.target) lastTarget = res.target;
+      } catch (err: any) {
+        const msg = String(err?.message ?? "Validation failed");
+        toast({ title: "Timeout validation error", description: msg, variant: "destructive" });
+        break;
+      }
+    }
+
+    if (lastTarget) setTargetWord(lastTarget.toUpperCase());
+  }, [gameId, guesses.length, toast, playSound]);
+
   const handleKeyPress = useCallback(async (key: string) => {
     if (gameOver) return;
 
     if (key === "ENTER") {
       if (!gameId) {
-        toast({ title: "No active session", description: "Start the game first.", variant: "destructive" });
         return;
       }
       // Count how many non-revealed positions we need
@@ -191,11 +222,6 @@ const WordleGame = () => {
       if (currentGuess.length !== nonRevealedCount) {
         setShake(true);
         setTimeout(() => setShake(false), 500);
-        toast({
-          title: "Not enough letters",
-          description: "Please enter all remaining letters",
-          variant: "destructive",
-        });
         playSound("wrong");
         return;
       }
@@ -217,6 +243,7 @@ const WordleGame = () => {
         const res = await apiValidateWordleGuess({ guess: fullGuess, gameId: gameId ?? undefined });
         const newGuesses = [...guesses, fullGuess];
         setGuesses(newGuesses);
+        setGuessResults((prev) => [...prev, res.result]);
         updateLetterStatus(fullGuess, res.result);
         if (typeof res.remainingTime === "number") setTimeLeft(Math.max(0, Math.ceil(res.remainingTime / 1000)));
 
@@ -285,20 +312,18 @@ const WordleGame = () => {
   }, [gameOver, gameStarted, showGameOver, showNewGameConfirm, handleKeyPress]);
 
   const handleHint = useCallback(async () => {
-    if (gameOver) return;
+    if (gameOver || hintInFlight) return;
     if (!gameId) {
-      toast({ title: "No active session", description: "Start the game first.", variant: "destructive" });
       return;
     }
-    const assistUses = hintsUsed + searchesUsed;
 
     const unrevealedIndices = Array.from({ length: 5 }, (_, i) => i).filter((i) => !revealedLetters.has(i));
     if (unrevealedIndices.length === 0) {
-      toast({ title: "All letters revealed!", description: "You've uncovered every spot in the word." });
       return;
     }
 
     try {
+      setHintInFlight(true);
       const res = await apiWordleHint();
       if (typeof res.balance === "number") syncBalance(res.balance);
       const newRevealed = new Set(revealedLetters);
@@ -317,24 +342,24 @@ const WordleGame = () => {
         return arr.join("");
       });
       setHintsUsed((prev) => prev + 1);
-      toast({ title: "Letter revealed", description: `Position ${res.position + 1} is "${res.letter}"` });
       playSound("hint");
     } catch (err: any) {
       const msg = String(err?.message ?? "Hint failed");
       toast({ title: "Hint error", description: msg, variant: "destructive" });
       playSound("wrong");
+    } finally {
+      setHintInFlight(false);
     }
-  }, [gameOver, gameId, hintsUsed, searchesUsed, revealedLetters, syncBalance, playSound, toast]);
+  }, [gameOver, gameId, hintsUsed, searchesUsed, revealedLetters, syncBalance, playSound, toast, hintInFlight]);
 
   const handleSearch = useCallback(async () => {
-    if (gameOver) return;
+    if (gameOver || searchInFlight) return;
     if (!gameId) {
-      toast({ title: "No active session", description: "Start the game first.", variant: "destructive" });
       return;
     }
-    const assistUses = hintsUsed + searchesUsed;
 
     try {
+      setSearchInFlight(true);
       const res = await apiWordleSearch();
       if (typeof res.balance === "number") syncBalance(res.balance);
       const updated = new Set(searchClues);
@@ -342,19 +367,22 @@ const WordleGame = () => {
       if (up) updated.add(up);
       setSearchClues(updated);
       setSearchesUsed((prev) => prev + 1);
-      toast({ title: "Search clue", description: `The word contains the letter "${res.letter}"` });
       playSound("search");
     } catch (err: any) {
       const msg = String(err?.message ?? "Search failed");
       toast({ title: "Search error", description: msg, variant: "destructive" });
       playSound("wrong");
+    } finally {
+      setSearchInFlight(false);
     }
-  }, [gameOver, gameId, hintsUsed, searchesUsed, searchClues, syncBalance, targetWord, toast, playSound]);
+  }, [gameOver, gameId, hintsUsed, searchesUsed, searchClues, syncBalance, targetWord, toast, playSound, searchInFlight]);
 
   const resetGame = useCallback(() => {
+    timeoutHandledRef.current = false;
     setTargetWord("");
     setGameId(null);
     setGuesses([]);
+    setGuessResults([]);
     setCurrentGuess("");
     setGameOver(false);
     setWon(false);
@@ -372,10 +400,10 @@ const WordleGame = () => {
   const startGame = async () => {
     try {
       const session = await apiGetWordleWord();
+      timeoutHandledRef.current = false;
       setGameStarted(true);
       setGameId(session.gameId);
-      const secs = typeof session.remainingTime === "number" ? Math.max(0, Math.ceil(session.remainingTime / 1000)) : TIMER_DURATION_DEFAULT;
-      setTimeLeft(secs);
+      setTimeLeft(TIMER_DURATION_DEFAULT);
       setTargetWord(""); // unknown to client until win/lose reveal
       playSound("start");
     } catch (err: any) {
@@ -394,8 +422,8 @@ const WordleGame = () => {
 
   const assistsUsed = hintsUsed + searchesUsed;
   const freeAssistsLeft = Math.max(0, FREE_ASSISTS - assistsUsed);
-  const canUseHint = !gameOver && (freeAssistsLeft > 0 || totalCoins >= ASSIST_COST) && revealedLetters.size < 5;
-  const canUseSearch = !gameOver && (freeAssistsLeft > 0 || totalCoins >= ASSIST_COST);
+  const canUseHint = !gameOver && !hintInFlight && (freeAssistsLeft > 0 || totalCoins >= ASSIST_COST) && revealedLetters.size < 5;
+  const canUseSearch = !gameOver && !searchInFlight && (freeAssistsLeft > 0 || totalCoins >= ASSIST_COST);
 
   useEffect(() => {
     if (gameOver || !gameStarted) return;
@@ -403,10 +431,7 @@ const WordleGame = () => {
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          setGameOver(true);
-          setWon(false);
-          setShowGameOver(true);
-          playSound("lose");
+          finalizeTimeout();
           return 0;
         }
         return prev - 1;
@@ -414,7 +439,7 @@ const WordleGame = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [gameOver, gameStarted, playSound]);
+  }, [gameOver, gameStarted, finalizeTimeout]);
 
   const wordleInstructions = [
     {
@@ -527,17 +552,19 @@ const WordleGame = () => {
         ))}
       </div>
 
-      <GameHeader
-        coins={totalCoins}
-        timeLeft={timeLeft}
-        gameStarted={gameStarted && !showGameOver}
-        coinAnchorRef={coinAnchorRef}
-        onNewGame={handleNewGame}
-        showCoins={false}
-        showTimer={false}
-      />
+      {!gameStarted || showGameOver ? (
+        <GameHeader
+          coins={totalCoins}
+          timeLeft={timeLeft}
+          gameStarted={gameStarted && !showGameOver}
+          coinAnchorRef={coinAnchorRef}
+          onNewGame={handleNewGame}
+          showCoins={false}
+          showTimer={false}
+        />
+      ) : null}
 
-      <div className="flex-1 px-4 py-6 max-w-4xl mx-auto w-full relative z-10 pt-14 sm:pt-16">
+      <div className="flex-1 px-3 sm:px-4 py-4 sm:py-6 max-w-4xl mx-auto w-full relative z-10 pt-10 sm:pt-14">
         <div className="absolute top-3 left-3 z-30">
           <Button variant="secondary" size="icon" className="rounded-full shadow-md h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16" onClick={() => setRulesOpen(true)}>
             <HelpCircle className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16" />
@@ -560,7 +587,7 @@ const WordleGame = () => {
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 rounded-xl bg-black/10 px-3 py-2 border border-white/15 shadow-inner">
                   <Timer className={`w-5 h-5 ${timeLeft <= 10 ? "text-red-500 animate-pulse" : "text-white"}`} />
-                  <span className="text-base sm:text-lg font-semibold text-white">{timeLeft}s</span>
+                  <span className="text-sm sm:text-lg font-semibold text-white">{timeLeft}s</span>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -608,20 +635,11 @@ const WordleGame = () => {
           />
         ) : (
           <>
-            {searchClues.size > 0 && (
-              <div className="flex justify-center gap-2 flex-wrap mb-4">
-                {[...searchClues].map((letter) => (
-                  <Badge key={letter} variant="secondary" className="bg-white/10 text-white border-white/20 backdrop-blur">
-                    Contains "{letter}"
-                  </Badge>
-                ))}
-              </div>
-            )}
-
             <div className="flex flex-col min-h-[calc(100vh-12rem)] gap-4">
               <div className="flex-1 flex flex-col justify-start gap-4">
                 <WordleGrid
                   guesses={guesses}
+                  guessResults={guessResults}
                   currentGuess={currentGuess}
                   maxAttempts={MAX_ATTEMPTS}
                   targetWord={targetWord}
@@ -657,7 +675,7 @@ const WordleGame = () => {
       </div>
 
       <Dialog open={rulesOpen} onOpenChange={setRulesOpen}>
-        <DialogContent className="max-w-lg bg-yellow-50/80 border-yellow-300">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto bg-yellow-50/80 border-yellow-300">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <HelpCircle className="h-5 w-5 text-primary" />

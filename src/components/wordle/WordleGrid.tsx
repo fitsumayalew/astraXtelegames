@@ -1,5 +1,6 @@
 interface WordleGridProps {
   guesses: string[];
+  guessResults: Array<Array<"correct" | "present" | "absent">>;
   currentGuess: string;
   maxAttempts: number;
   targetWord: string;
@@ -8,14 +9,18 @@ interface WordleGridProps {
   revealedHints?: Map<number, string>;
 }
 
-const WordleGrid = ({ guesses, currentGuess, maxAttempts, targetWord, shake, revealedLetters, revealedHints = new Map() }: WordleGridProps) => {
-  const getCellColor = (letter: string, index: number, guess: string) => {
-    if (targetWord[index] === letter) {
-      return "bg-[#6aaa64] border-[#4d7c45] text-white shadow-lg ring-1 ring-white/70";
-    }
-    if (targetWord.includes(letter)) {
-      return "bg-[#c9b458] border-[#9f8933] text-white shadow-lg ring-1 ring-white/70";
-    }
+const WordleGrid = ({ guesses, guessResults, currentGuess, maxAttempts, targetWord, shake, revealedLetters, revealedHints = new Map() }: WordleGridProps) => {
+  const getCellColor = (letter: string, index: number, guess: string, rowIndex: number) => {
+    const resultRow = guessResults[rowIndex];
+    const status = resultRow?.[index];
+
+    if (status === "correct") return "bg-[#6aaa64] border-[#4d7c45] text-white shadow-lg ring-1 ring-white/70";
+    if (status === "present") return "bg-[#c9b458] border-[#9f8933] text-white shadow-lg ring-1 ring-white/70";
+    if (status === "absent") return "bg-[#787c7e] border-[#5a5d60] text-white shadow-lg ring-1 ring-white/70";
+
+    // Fallback: use targetWord only if known
+    if (targetWord[index] === letter) return "bg-[#6aaa64] border-[#4d7c45] text-white shadow-lg ring-1 ring-white/70";
+    if (targetWord.includes(letter)) return "bg-[#c9b458] border-[#9f8933] text-white shadow-lg ring-1 ring-white/70";
     return "bg-[#787c7e] border-[#5a5d60] text-white shadow-lg ring-1 ring-white/70";
   };
 
@@ -49,7 +54,7 @@ const WordleGrid = ({ guesses, currentGuess, maxAttempts, targetWord, shake, rev
   });
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5 sm:space-y-2">
       {rows.map((row, rowIndex) => {
         const isCurrentRow = rowIndex === guesses.length && currentGuess;
         const isSubmittedRow = rowIndex < guesses.length;
@@ -58,7 +63,7 @@ const WordleGrid = ({ guesses, currentGuess, maxAttempts, targetWord, shake, rev
         return (
           <div
             key={rowIndex}
-            className={`flex justify-center gap-2 ${
+            className={`flex justify-center gap-1.5 sm:gap-2 ${
               isCurrentRow && shake ? "animate-shake" : ""
             }`}
           >
@@ -71,12 +76,12 @@ const WordleGrid = ({ guesses, currentGuess, maxAttempts, targetWord, shake, rev
                 <div
                   key={colIndex}
                   className={`
-                    w-11 h-11 sm:w-13 sm:h-13 md:w-15 md:h-15 border-3 flex items-center justify-center
-                    text-xl md:text-2xl font-bold transition-all duration-300
+                    w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 border-3 flex items-center justify-center
+                    text-lg sm:text-xl md:text-2xl font-bold transition-all duration-300
                     shadow-inner shadow-[inset_0_2px_6px_rgba(0,0,0,0.35)]
                     ${
                       isSubmittedRow
-                        ? getCellColor(letter, colIndex, row)
+                        ? getCellColor(letter, colIndex, row, rowIndex)
                         : isRevealed
                         ? "bg-[#6aaa64] border-[#4d7c45] text-white shadow-lg ring-1 ring-white/70"
                         : hasLetter
