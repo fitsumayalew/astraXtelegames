@@ -1,13 +1,36 @@
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8787";
 const USER_ID_KEY = "userId";
 
+export type WordleSession = {
+  gameId: string;
+  wordLength: number;
+  startedAt?: string;
+  expiresAt?: string;
+  attempts?: number;
+  guessTimestamps?: string[];
+  remainingTime?: number;
+};
+
+export type GameStats = {
+  gamesPlayed?: number;
+  gamesWon?: number;
+  totalTime?: number;
+  wordle?: {
+    attempts?: number;
+    lastWord?: string;
+  };
+};
+
 export type UserSnapshot = {
   userId: string;
-  name: string;
+  name?: string;
   coins: number;
-  stats: Record<string, unknown>;
+  stats: GameStats;
   createdAt: string;
   updatedAt: string;
+  hintUses?: number;
+  searchUses?: number;
+  wordleSession?: WordleSession;
 };
 
 const safeLocalStorage = (): Storage | null => {
@@ -74,6 +97,13 @@ async function request<T>(path: string, method: HttpMethod, body?: unknown): Pro
     body: method === "POST" ? JSON.stringify(body ?? {}) : undefined,
   });
 
+  // Capture a server-provided userId if returned (first call case)
+  const returnedUserId = res.headers.get("x-user-id");
+  if (returnedUserId) {
+    const storage = safeLocalStorage();
+    storage?.setItem(USER_ID_KEY, returnedUserId);
+  }
+
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const message = (data as any)?.error ?? "Request failed";
@@ -92,24 +122,34 @@ export const apiUpdateStats = (payload: { statsPatch?: Record<string, unknown>; 
 export const apiGetWordleWord = () =>
   request<{ gameId: string; wordLength: number; remainingTime?: number; resumed?: boolean }>("/api/wordle/word", "GET");
 
-export const apiValidateWordleGuess = (guess: string) =>
-  request<{ result: Array<"correct" | "present" | "absent">; victory: boolean; target?: string }>(
-    "/api/wordle/validate",
-    "POST",
-    { guess }
-  );
+export const apiValidateWordleGuess = (payload: { guess: string; gameId?: string }) =>
+  request<{
+    result: Array<"correct" | "present" | "absent">;
+    victory: boolean;
+    target?: string;
+    remainingTime?: number;
+  }>("/api/wordle/validate", "POST", payload);
 
 export const apiWordleHint = () =>
-  request<{ ok: true; charged: boolean; remainingFree: number; balance: number; user: UserSnapshot }>(
-    "/api/wordle/hint",
-    "POST"
-  );
+  request<{
+    ok: true;
+    charged: boolean;
+    remainingFree: number;
+    balance: number;
+    user: UserSnapshot;
+    letter: string;
+    position: number;
+  }>("/api/wordle/hint", "POST");
 
 export const apiWordleSearch = () =>
-  request<{ ok: true; charged: boolean; remainingFree: number; balance: number; user: UserSnapshot }>(
-    "/api/wordle/search",
-    "POST"
-  );
+  request<{
+    ok: true;
+    charged: boolean;
+    remainingFree: number;
+    balance: number;
+    user: UserSnapshot;
+    letter: string;
+  }>("/api/wordle/search", "POST");
 
 export const apiConfig = {
   API_BASE,

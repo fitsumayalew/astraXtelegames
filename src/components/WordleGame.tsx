@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef, type CSSProperties } from "react";
 import { useCoins } from "@/contexts/CoinContext";
 import { useToast } from "@/hooks/use-toast";
-import { getRandomWord, isValidWord } from "@/data/wordleWords";
+import { isValidWord } from "@/data/wordleWords";
+import { apiGetWordleWord, apiValidateWordleGuess, apiWordleHint, apiWordleSearch } from "@/lib/api";
 import GameHeader from "./shared/GameHeader";
 import WordleGameControls from "./wordle/WordleGameControls";
 import WordleGrid from "./wordle/WordleGrid";
@@ -36,10 +37,10 @@ import {
 import wordleHero from "@/assets/wordle-hero.png";
 
 const MAX_ATTEMPTS = 6;
-const TIMER_DURATION = 60;
-const FREE_ASSISTS = 5;
-const ASSIST_COST = 10;
-const WIN_REWARD = 50;
+const TIMER_DURATION_DEFAULT = 70; // backend ~70, falls back if missing
+const FREE_ASSISTS = 3; // backend free quota
+const ASSIST_COST = 10; // backend cost after free quota
+const WIN_REWARD = 50; // optional visual reward; backend owns coins
 const BACKGROUND_IMG = "https://c8.alamy.com/comp/M566HP/abstract-letters-background-mix-alphabet-M566HP.jpg";
 
 const getMediaUrl = (fileName: string) => `/media/${encodeURIComponent(fileName)}`;
@@ -78,18 +79,19 @@ type CoinBurst = {
 };
 
 const WordleGame = () => {
-  const { totalCoins, addCoins, spendCoins } = useCoins();
+  const { totalCoins, syncBalance } = useCoins();
   const { toast } = useToast();
 
   const coinAnchorRef = useRef<HTMLAnchorElement | null>(null);
   const gameAreaRef = useRef<HTMLDivElement | null>(null);
 
-  const [targetWord, setTargetWord] = useState(getRandomWord());
+  const [targetWord, setTargetWord] = useState<string>("");
+  const [gameId, setGameId] = useState<string | null>(null);
   const [guesses, setGuesses] = useState<string[]>([]);
   const [currentGuess, setCurrentGuess] = useState("");
   const [gameOver, setGameOver] = useState(false);
   const [won, setWon] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(TIMER_DURATION);
+  const [timeLeft, setTimeLeft] = useState(TIMER_DURATION_DEFAULT);
   const [letterStatus, setLetterStatus] = useState<Map<string, "correct" | "present" | "absent">>(new Map());
   const [shake, setShake] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
@@ -97,6 +99,8 @@ const WordleGame = () => {
   const [showNewGameConfirm, setShowNewGameConfirm] = useState(false);
   const [hintsUsed, setHintsUsed] = useState(0);
   const [revealedLetters, setRevealedLetters] = useState<Set<number>>(new Set());
+  // Track revealed letter values from backend hints so we can prefill correctly
+  const [revealedHints, setRevealedHints] = useState<Map<number, string>>(new Map());
   const [searchesUsed, setSearchesUsed] = useState(0);
   const [searchClues, setSearchClues] = useState<Set<string>>(new Set());
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem("wordleSound") !== "off");
@@ -133,15 +137,21 @@ const WordleGame = () => {
     }, 1200);
   }, []);
 
-  const updateLetterStatus = useCallback((guess: string) => {
+  const updateLetterStatus = useCallback((guess: string, result?: Array<"correct" | "present" | "absent">) => {
     const newStatus = new Map(letterStatus);
-    
-    guess.split("").forEach((letter, index) => {
-      if (targetWord[index] === letter) {
+    const letters = guess.split("");
+    letters.forEach((letter, index) => {
+      const status = result ? result[index] : undefined;
+      if (status) {
+        newStatus.set(letter, status);
+        return;
+      }
+      // Fallback status if backend result missing
+      if (targetWord && targetWord[index] === letter) {
         newStatus.set(letter, "correct");
-      } else if (targetWord.includes(letter) && newStatus.get(letter) !== "correct") {
+      } else if (targetWord && targetWord.includes(letter) && newStatus.get(letter) !== "correct") {
         newStatus.set(letter, "present");
-      } else if (!targetWord.includes(letter)) {
+      } else {
         newStatus.set(letter, "absent");
       }
     });
@@ -155,7 +165,6 @@ const WordleGame = () => {
     setShowGameOver(true);
 
     if (victory) {
-      addCoins(WIN_REWARD);
       playSound("win");
       triggerCoinBurst();
       confetti({
@@ -166,12 +175,16 @@ const WordleGame = () => {
     } else {
       playSound("lose");
     }
-  }, [addCoins, playSound, triggerCoinBurst]);
+  }, [playSound, triggerCoinBurst]);
 
-  const handleKeyPress = useCallback((key: string) => {
+  const handleKeyPress = useCallback(async (key: string) => {
     if (gameOver) return;
 
     if (key === "ENTER") {
+      if (!gameId) {
+        toast({ title: "No active session", description: "Start the game first.", variant: "destructive" });
+        return;
+      }
       // Count how many non-revealed positions we need
       const nonRevealedCount = 5 - revealedLetters.size;
       
@@ -187,43 +200,61 @@ const WordleGame = () => {
         return;
       }
 
-      // Build the full word by merging revealed letters and user input
+      // Build the full word by merging revealed letters (from backend hints) and user input
       let fullGuess = "";
       let userInputIndex = 0;
       for (let i = 0; i < 5; i++) {
         if (revealedLetters.has(i)) {
-          fullGuess += targetWord[i];
+          const hinted = revealedHints.get(i);
+          fullGuess += (hinted ?? "");
         } else {
           fullGuess += currentGuess[userInputIndex];
           userInputIndex++;
         }
       }
 
-      if (!isValidWord(fullGuess)) {
-        setShake(true);
-        setTimeout(() => setShake(false), 500);
-        toast({
-          title: "Invalid word",
-          description: "Word not in dictionary",
-          variant: "destructive",
-        });
-        playSound("wrong");
-        return;
-      }
+      try {
+        const res = await apiValidateWordleGuess({ guess: fullGuess, gameId: gameId ?? undefined });
+        const newGuesses = [...guesses, fullGuess];
+        setGuesses(newGuesses);
+        updateLetterStatus(fullGuess, res.result);
+        if (typeof res.remainingTime === "number") setTimeLeft(Math.max(0, Math.ceil(res.remainingTime / 1000)));
 
-      const newGuesses = [...guesses, fullGuess];
-      setGuesses(newGuesses);
-      updateLetterStatus(fullGuess);
-      
-      if (fullGuess === targetWord) {
-        endGame(true);
-      } else if (newGuesses.length >= MAX_ATTEMPTS) {
-        endGame(false);
-      } else {
-        playSound("click");
+        if (res.victory) {
+          if (res.target) setTargetWord(res.target);
+          endGame(true);
+        } else {
+          if (newGuesses.length >= MAX_ATTEMPTS) {
+            // attempts exhausted; backend may include target
+            if (res.target) setTargetWord(res.target);
+            endGame(false);
+          } else {
+            playSound("click");
+          }
+        }
+      } catch (err: any) {
+        const msg = String(err?.message ?? "Validation failed");
+        if (/expired/i.test(msg)) {
+          // 410 case: ended, reveal target if available via message
+          setGameOver(true);
+          setWon(false);
+          setShowGameOver(true);
+          playSound("lose");
+        } else if (/rate/i.test(msg)) {
+          toast({ title: "Slow down", description: "Too many guesses; please slow down.", variant: "destructive" });
+        } else if (/No active session|Mismatched gameId/i.test(msg)) {
+          toast({ title: "Session error", description: msg, variant: "destructive" });
+        } else if (/guess must be 5 letters|not in word list/i.test(msg)) {
+          setShake(true);
+          setTimeout(() => setShake(false), 500);
+          toast({ title: "Invalid guess", description: msg, variant: "destructive" });
+          playSound("wrong");
+        } else {
+          toast({ title: "Error", description: msg, variant: "destructive" });
+        }
+      } finally {
+        setCurrentGuess("");
       }
-
-      setCurrentGuess("");
     } else if (key === "⌫") {
       setCurrentGuess((prev) => prev.slice(0, -1));
       playSound("click");
@@ -234,7 +265,7 @@ const WordleGame = () => {
         playSound("letter");
       }
     }
-  }, [currentGuess, guesses, gameOver, targetWord, toast, playSound, updateLetterStatus, endGame, revealedLetters]);
+  }, [currentGuess, guesses, gameOver, gameId, targetWord, toast, playSound, updateLetterStatus, endGame, revealedLetters]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -253,99 +284,81 @@ const WordleGame = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [gameOver, gameStarted, showGameOver, showNewGameConfirm, handleKeyPress]);
 
-  const handleHint = useCallback(() => {
+  const handleHint = useCallback(async () => {
     if (gameOver) return;
-
-    const assistUses = hintsUsed + searchesUsed;
-    const requiresCoins = assistUses >= FREE_ASSISTS;
-
-    if (requiresCoins && !spendCoins(ASSIST_COST)) {
-      toast({
-        title: "Not enough coins!",
-        description: `You need ${ASSIST_COST} coins for extra assists`,
-        variant: "destructive",
-      });
-      playSound("wrong");
+    if (!gameId) {
+      toast({ title: "No active session", description: "Start the game first.", variant: "destructive" });
       return;
     }
+    const assistUses = hintsUsed + searchesUsed;
 
-    const unrevealedIndices = Array.from({ length: 5 }, (_, i) => i).filter(
-      (i) => !revealedLetters.has(i)
-    );
-
+    const unrevealedIndices = Array.from({ length: 5 }, (_, i) => i).filter((i) => !revealedLetters.has(i));
     if (unrevealedIndices.length === 0) {
-      toast({
-        title: "All letters revealed!",
-        description: "You've uncovered every spot in the word.",
-      });
-      if (requiresCoins) addCoins(ASSIST_COST);
+      toast({ title: "All letters revealed!", description: "You've uncovered every spot in the word." });
       return;
     }
 
-    const randomIndex = unrevealedIndices[Math.floor(Math.random() * unrevealedIndices.length)];
-    const newRevealed = new Set(revealedLetters);
-    newRevealed.add(randomIndex);
-    setRevealedLetters(newRevealed);
-    setHintsUsed((prev) => prev + 1);
-
-    toast({
-      title: "Letter revealed",
-      description: `Position ${randomIndex + 1} is "${targetWord[randomIndex]}"`,
-    });
-
-    playSound("hint");
-  }, [gameOver, hintsUsed, searchesUsed, revealedLetters, targetWord, spendCoins, addCoins, playSound, toast]);
-
-  const handleSearch = useCallback(() => {
-    if (gameOver) return;
-
-    const assistUses = hintsUsed + searchesUsed;
-    const requiresCoins = assistUses >= FREE_ASSISTS;
-
-    if (requiresCoins && !spendCoins(ASSIST_COST)) {
-      toast({
-        title: "Not enough coins!",
-        description: `Search after the first ${FREE_ASSISTS} assists costs ${ASSIST_COST} coins`,
-        variant: "destructive",
+    try {
+      const res = await apiWordleHint();
+      if (typeof res.balance === "number") syncBalance(res.balance);
+      const newRevealed = new Set(revealedLetters);
+      newRevealed.add(res.position);
+      setRevealedLetters(newRevealed);
+      setRevealedHints((prev) => {
+        const next = new Map(prev);
+        const up = typeof res.letter === "string" ? res.letter.toUpperCase() : "";
+        next.set(res.position, up);
+        return next;
       });
+      // Also update targetWord placeholder to ensure UI prefills the correct letter
+      setTargetWord((prev) => {
+        const arr = (prev && prev.length === 5 ? prev.split("") : ["", "", "", "", ""]);
+        arr[res.position] = typeof res.letter === "string" ? res.letter.toUpperCase() : "";
+        return arr.join("");
+      });
+      setHintsUsed((prev) => prev + 1);
+      toast({ title: "Letter revealed", description: `Position ${res.position + 1} is "${res.letter}"` });
+      playSound("hint");
+    } catch (err: any) {
+      const msg = String(err?.message ?? "Hint failed");
+      toast({ title: "Hint error", description: msg, variant: "destructive" });
       playSound("wrong");
+    }
+  }, [gameOver, gameId, hintsUsed, searchesUsed, revealedLetters, syncBalance, playSound, toast]);
+
+  const handleSearch = useCallback(async () => {
+    if (gameOver) return;
+    if (!gameId) {
+      toast({ title: "No active session", description: "Start the game first.", variant: "destructive" });
       return;
     }
+    const assistUses = hintsUsed + searchesUsed;
 
-    const remainingLetters = targetWord
-      .split("")
-      .filter((letter) => !searchClues.has(letter));
-
-    if (remainingLetters.length === 0) {
-      toast({
-        title: "No more clues",
-        description: "You've discovered every letter already.",
-      });
-      if (requiresCoins) addCoins(ASSIST_COST);
-      return;
+    try {
+      const res = await apiWordleSearch();
+      if (typeof res.balance === "number") syncBalance(res.balance);
+      const updated = new Set(searchClues);
+      const up = typeof res.letter === "string" ? res.letter.toUpperCase() : "";
+      if (up) updated.add(up);
+      setSearchClues(updated);
+      setSearchesUsed((prev) => prev + 1);
+      toast({ title: "Search clue", description: `The word contains the letter "${res.letter}"` });
+      playSound("search");
+    } catch (err: any) {
+      const msg = String(err?.message ?? "Search failed");
+      toast({ title: "Search error", description: msg, variant: "destructive" });
+      playSound("wrong");
     }
-
-    const letter = remainingLetters[Math.floor(Math.random() * remainingLetters.length)];
-    const updated = new Set(searchClues);
-    updated.add(letter);
-    setSearchClues(updated);
-    setSearchesUsed((prev) => prev + 1);
-
-    toast({
-      title: "Search clue",
-      description: `The word contains the letter "${letter}"`,
-    });
-
-    playSound("search");
-  }, [addCoins, gameOver, hintsUsed, searchesUsed, searchClues, spendCoins, targetWord, toast, playSound]);
+  }, [gameOver, gameId, hintsUsed, searchesUsed, searchClues, syncBalance, targetWord, toast, playSound]);
 
   const resetGame = useCallback(() => {
-    setTargetWord(getRandomWord());
+    setTargetWord("");
+    setGameId(null);
     setGuesses([]);
     setCurrentGuess("");
     setGameOver(false);
     setWon(false);
-    setTimeLeft(TIMER_DURATION);
+    setTimeLeft(TIMER_DURATION_DEFAULT);
     setLetterStatus(new Map());
     setShake(false);
     setShowGameOver(false);
@@ -356,9 +369,19 @@ const WordleGame = () => {
     setSearchClues(new Set());
   }, []);
 
-  const startGame = () => {
-    setGameStarted(true);
-    playSound("start");
+  const startGame = async () => {
+    try {
+      const session = await apiGetWordleWord();
+      setGameStarted(true);
+      setGameId(session.gameId);
+      const secs = typeof session.remainingTime === "number" ? Math.max(0, Math.ceil(session.remainingTime / 1000)) : TIMER_DURATION_DEFAULT;
+      setTimeLeft(secs);
+      setTargetWord(""); // unknown to client until win/lose reveal
+      playSound("start");
+    } catch (err: any) {
+      const msg = String(err?.message ?? "Failed to start session");
+      toast({ title: "Start failed", description: msg, variant: "destructive" });
+    }
   };
 
   const handleNewGame = useCallback(() => {
@@ -462,7 +485,7 @@ const WordleGame = () => {
   const gameStats = won
     ? [
         { label: "Guesses", value: `${guesses.length}/${MAX_ATTEMPTS}` },
-        { label: "Time", value: `${TIMER_DURATION - timeLeft}s` },
+        { label: "Time", value: `${TIMER_DURATION_DEFAULT - timeLeft}s` },
       ]
     : [
         { label: "The Word Was", value: targetWord },
@@ -604,6 +627,7 @@ const WordleGame = () => {
                   targetWord={targetWord}
                   shake={shake}
                   revealedLetters={revealedLetters}
+                  revealedHints={revealedHints}
                 />
               </div>
 
@@ -614,6 +638,7 @@ const WordleGame = () => {
                   disabled={gameOver}
                   targetWord={targetWord}
                   revealedLetters={revealedLetters}
+                  revealedHints={revealedHints}
                   searchClues={searchClues}
                 />
               </div>

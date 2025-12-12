@@ -5,9 +5,10 @@ interface WordleGridProps {
   targetWord: string;
   shake: boolean;
   revealedLetters: Set<number>;
+  revealedHints?: Map<number, string>;
 }
 
-const WordleGrid = ({ guesses, currentGuess, maxAttempts, targetWord, shake, revealedLetters }: WordleGridProps) => {
+const WordleGrid = ({ guesses, currentGuess, maxAttempts, targetWord, shake, revealedLetters, revealedHints = new Map() }: WordleGridProps) => {
   const getCellColor = (letter: string, index: number, guess: string) => {
     if (targetWord[index] === letter) {
       return "bg-[#6aaa64] border-[#4d7c45] text-white shadow-lg ring-1 ring-white/70";
@@ -27,7 +28,8 @@ const WordleGrid = ({ guesses, currentGuess, maxAttempts, targetWord, shake, rev
       let userInputIndex = 0;
       for (let j = 0; j < 5; j++) {
         if (revealedLetters.has(j)) {
-          displayGuess += targetWord[j];
+          const hinted = revealedHints.get(j) ?? "";
+          displayGuess += hinted;
         } else if (userInputIndex < currentGuess.length) {
           displayGuess += currentGuess[userInputIndex];
           userInputIndex++;
@@ -40,7 +42,8 @@ const WordleGrid = ({ guesses, currentGuess, maxAttempts, targetWord, shake, rev
     // For future rows, show revealed letters
     let futureGuess = "";
     for (let j = 0; j < 5; j++) {
-      futureGuess += revealedLetters.has(j) ? targetWord[j] : " ";
+      const hinted = revealedLetters.has(j) ? (revealedHints.get(j) ?? "") : " ";
+      futureGuess += hinted;
     }
     return futureGuess;
   });

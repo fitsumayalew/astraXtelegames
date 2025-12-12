@@ -7,6 +7,7 @@ interface WordleKeyboardProps {
   disabled: boolean;
   targetWord: string;
   revealedLetters: Set<number>;
+  revealedHints?: Map<number, string>;
   searchClues?: Set<string>;
 }
 
@@ -16,10 +17,10 @@ const KEYBOARD_ROWS = [
   ["ENTER", "Z", "X", "C", "V", "B", "N", "M", "⌫"],
 ];
 
-const WordleKeyboard = ({ onKeyPress, letterStatus, disabled, targetWord, revealedLetters, searchClues = new Set() }: WordleKeyboardProps) => {
+const WordleKeyboard = ({ onKeyPress, letterStatus, disabled, targetWord, revealedLetters, revealedHints = new Map(), searchClues = new Set() }: WordleKeyboardProps) => {
   const getKeyColor = (key: string) => {
     // Check if this letter is revealed as a hint
-    const revealedLettersArray = Array.from(revealedLetters).map(i => targetWord[i]);
+    const revealedLettersArray = Array.from(revealedLetters).map(i => revealedHints.get(i) ?? "");
     if (revealedLettersArray.includes(key)) {
       return "bg-[#6aaa64] hover:bg-[#5a9a54] text-white border-green-300 shadow-md";
     }
