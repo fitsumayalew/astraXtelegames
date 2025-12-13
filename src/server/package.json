@@ -1,0 +1,17 @@
+{
+  "name": "astra-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bunx wrangler dev",
+    "start": "bunx wrangler dev",
+    "deploy": "bunx wrangler deploy",
+    "check": "bunx tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241218",
+    "typescript": "^5.4.5",
+    "wrangler": "^3.80.1"
+  }
+}

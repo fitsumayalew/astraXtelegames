@@ -1,5 +1,5 @@
 import GameStartScreen from "./shared/GameStartScreen";
-import { Clock, Heart, Coins, Trophy, HelpCircle, Volume2, VolumeX } from "lucide-react";
+import { Clock, Heart, Coins, Trophy, HelpCircle, Volume2, VolumeX, Info } from "lucide-react";
 import popQuizLogo from "@/assets/pop-quiz-logo.png";
 import { useCoins } from "@/contexts/CoinContext";
 import { useState } from "react";
@@ -15,7 +15,7 @@ const StartScreen = ({ onStartGame }: StartScreenProps) => {
   const ENTRY_COST = 100;
   const canAfford = totalCoins >= ENTRY_COST;
   const [rulesOpen, setRulesOpen] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem("quizSound") !== "off");
 
   // Move instructions into a modal, keep start screen clean (like Wordle)
   const instructions: { icon: typeof Clock; title: string; description: string }[] = [];
@@ -39,21 +39,29 @@ const StartScreen = ({ onStartGame }: StartScreenProps) => {
       backgroundImage="/image/pop-quize.png"
       showBackgroundAlways
       additionalContent={(
-        <div className="flex items-center justify-center gap-4">
+        <div className="flex items-center justify-center gap-3">
           <Button
             variant="secondary"
-            className="rounded-xl bg-white/20 text-white border border-white/40 backdrop-blur hover:bg-white/30"
+            className="rounded-full w-12 h-12 p-0 bg-gradient-to-br from-green-500 to-green-600 text-white border-2 border-white/60 shadow-lg hover:opacity-90"
             onClick={() => setRulesOpen(true)}
           >
-            How to Play
+            <Info className="w-6 h-6" />
+            <span className="sr-only">How to Play</span>
           </Button>
           <Button
             variant="secondary"
-            className="rounded-full w-12 h-12 p-0 bg-white/20 text-white border border-white/40 backdrop-blur hover:bg-white/30"
-            onClick={() => setSoundEnabled((s) => !s)}
+            className="rounded-full w-12 h-12 p-0 bg-gradient-to-br from-green-500 to-green-600 text-white border-2 border-white/60 shadow-lg hover:opacity-90"
+            onClick={() => {
+              const next = !soundEnabled;
+              setSoundEnabled(next);
+              localStorage.setItem("quizSound", next ? "on" : "off");
+              // notify QuizGame in same tab
+              window.dispatchEvent(new CustomEvent("quiz:sound-changed", { detail: next }));
+            }}
             aria-label="Toggle sound"
           >
             {soundEnabled ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
+            <span className="sr-only">Toggle Sound</span>
           </Button>
         </div>
       )}

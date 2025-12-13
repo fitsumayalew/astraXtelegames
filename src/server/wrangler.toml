@@ -1,0 +1,12 @@
+name = "astra-backend"
+main = "src/index.ts"
+compatibility_date = "2024-06-01"
+
+[durable_objects]
+bindings = [
+  { name = "USER_STATE", class_name = "UserState" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["UserState"]

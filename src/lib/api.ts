@@ -157,3 +157,55 @@ export const apiConfig = {
   API_BASE,
   USER_ID_KEY,
 };
+
+// Pop Quiz API
+export type QuizQuestion = {
+  id: string | number;
+  category?: string;
+  difficulty?: string;
+  question: string;
+  options: string[]; // server-shuffled; never includes answer index
+  coinsReward?: number;
+};
+
+export type QuizSession = {
+  id: string;
+  userId: string;
+  pointer: number;
+  lives: number;
+  score: number;
+  coinsEarned: number;
+  state: "active" | "ended";
+};
+
+export const apiQuizStart = (entryCost: number) =>
+  request<{ session: QuizSession; balance: number }>("/api/quiz/session/start", "POST", { entryCost });
+
+export const apiQuizGetQuestions = (params?: { limit?: number; category?: string; difficulty?: string }) => {
+  const search = new URLSearchParams();
+  if (params?.limit) search.set("limit", String(params.limit));
+  if (params?.category) search.set("category", params.category);
+  if (params?.difficulty) search.set("difficulty", params.difficulty);
+  const q = search.toString();
+  const path = `/api/quiz/questions${q ? `?${q}` : ""}`;
+  return request<{ questions: QuizQuestion[] }>(path, "GET");
+};
+
+export const apiQuizAnswer = (sessionId: string, selectedIndex: number) =>
+  request<{ correct: boolean; lives: number; score: number; coinsEarned: number; pointer: number; done: boolean }>(
+    `/api/quiz/session/${sessionId}/answer`,
+    "POST",
+    { selectedIndex }
+  );
+
+export const apiQuizAssistFifty = (sessionId: string) =>
+  request<{ indices: number[]; freeRemaining: number; costCharged?: number }>(`/api/quiz/session/${sessionId}/assist/fifty`, "POST");
+
+export const apiQuizAssistFreeze = (sessionId: string) =>
+  request<{ freezeSeconds: number; freeRemaining: number; costCharged?: number }>(`/api/quiz/session/${sessionId}/assist/freeze`, "POST");
+
+export const apiQuizSkip = (sessionId: string) =>
+  request<{ pointer: number }>(`/api/quiz/session/${sessionId}/skip`, "POST");
+
+export const apiQuizEnd = (sessionId: string) =>
+  request<{ summary: { lives: number; score: number; coinsEarned: number } }>(`/api/quiz/session/${sessionId}/end`, "POST");
