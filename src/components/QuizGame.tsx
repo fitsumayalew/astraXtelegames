@@ -316,7 +316,7 @@ const QuizGame = () => {
                           : "inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-[8px] md:text-[9px] px-1 py-0.5 md:px-1.5 border border-yellow-600/60 shadow-sm"
                       }
                     >
-                      {freeFiftyUsed < 2 ? `Free (${2 - freeFiftyUsed})` : (<><CoinsIcon className="w-3 h-3" /> 20</>)}
+                      {freeFiftyUsed < 2 ? `(${2 - freeFiftyUsed})` : (<><CoinsIcon className="w-3 h-3" /> 20</>)}
                     </span>
                   </div>
                 </div>
@@ -348,7 +348,7 @@ const QuizGame = () => {
                           : "inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-[8px] md:text-[9px] px-1 py-0.5 md:px-1.5 border border-yellow-600/60 shadow-sm"
                       }
                     >
-                      {freeFreezeUsed < 2 ? `Free (${2 - freeFreezeUsed})` : (<><CoinsIcon className="w-3 h-3" /> 10</>)}
+                      {freeFreezeUsed < 2 ? `(${2 - freeFreezeUsed})` : (<><CoinsIcon className="w-3 h-3" /> 10</>)}
                     </span>
                   </div>
                 </div>
