@@ -158,6 +158,7 @@ const QUIZ_RATE_LIMIT_WINDOW_MS = 30_000; // 30s window
 const QUIZ_RATE_LIMIT_MAX_ASSISTS = 3; // max assists per window
 const QUIZ_FREEZE_SECONDS = 8;
 const QUIZ_OPTIONS_COUNT = 4;
+const QUIZ_ROUND_QUESTIONS = 10;
 
 const DEFAULT_NAME = "Player";
 const STORAGE_KEY = "record";
@@ -947,20 +948,30 @@ export class UserState {
     const limit = limitParam ? Number(limitParam) : undefined;
 
     const record = await this.getRecord(userId);
-    // If there is an active session, return options according to its per-question shuffles for current and future pointer questions
     const session = record.quizSession;
-    const pool = filterQuizPool(limit, category ?? undefined, difficulty ?? undefined);
+
+    // No active session: return filtered pool honoring limit
     if (!session) {
+      const pool = filterQuizPool(limit, category ?? undefined, difficulty ?? undefined);
       return jsonResponse({ questions: pool }, 200, origin);
     }
-    // For client pool listing, do not reveal answers; but we may shuffle options deterministically per session
-    const mapped = pool.map((q) => {
-      // try to find pool index
-      const internalIndex = QUIZ_POOL_INTERNAL.findIndex((x) => x.id === q.id);
-      if (internalIndex < 0) return q;
-      const order = getOrCreateShuffleForQuestion(session, internalIndex);
-      return sanitizeQuestionForClient(q, order);
-    });
+
+    // Active session: lock to the session's question order to keep option shuffles aligned
+    const pool = filterQuizPool(undefined, category ?? undefined, difficulty ?? undefined);
+    const order = session.questionOrder ?? [];
+    const limitedOrder = typeof limit === "number" && Number.isFinite(limit)
+      ? order.slice(0, Math.max(0, limit))
+      : order;
+
+    const mapped: QuizQuestion[] = limitedOrder
+      .map((idx) => {
+        const base = pool[idx] ?? QUIZ_POOL_INTERNAL[idx];
+        if (!base) return null;
+        const shuffle = getOrCreateShuffleForQuestion(session, idx);
+        return sanitizeQuestionForClient(base, shuffle);
+      })
+      .filter((q): q is QuizQuestion => Boolean(q));
+
     record.updatedAt = nowIso();
     await this.saveRecord(record);
     return jsonResponse({ questions: mapped }, 200, origin);
@@ -978,7 +989,7 @@ export class UserState {
     record.coins -= entryCost;
 
     const totalQuestions = QUIZ_POOL_INTERNAL.length;
-    const order = shuffleArray([...Array(totalQuestions).keys()]);
+    const order = shuffleArray([...Array(totalQuestions).keys()]).slice(0, QUIZ_ROUND_QUESTIONS);
     const now = Date.now();
     const session: QuizSession = {
       id: crypto.randomUUID(),

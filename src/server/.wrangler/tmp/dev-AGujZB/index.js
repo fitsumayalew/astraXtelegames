@@ -577,6 +577,7 @@ var QUIZ_RATE_LIMIT_WINDOW_MS = 3e4;
 var QUIZ_RATE_LIMIT_MAX_ASSISTS = 3;
 var QUIZ_FREEZE_SECONDS = 8;
 var QUIZ_OPTIONS_COUNT = 4;
+var QUIZ_ROUND_QUESTIONS = 10;
 var DEFAULT_NAME = "Player";
 var STORAGE_KEY = "record";
 function isObject(value) {
@@ -1294,17 +1295,20 @@ var UserState = class {
     const limit = limitParam ? Number(limitParam) : void 0;
     const record = await this.getRecord(userId);
     const session = record.quizSession;
-    const pool = filterQuizPool(limit, category ?? void 0, difficulty ?? void 0);
     if (!session) {
-      return jsonResponse({ questions: pool }, 200, origin);
+      const pool2 = filterQuizPool(limit, category ?? void 0, difficulty ?? void 0);
+      return jsonResponse({ questions: pool2 }, 200, origin);
     }
-    const mapped = pool.map((q) => {
-      const internalIndex = QUIZ_POOL_INTERNAL.findIndex((x) => x.id === q.id);
-      if (internalIndex < 0)
-        return q;
-      const order = getOrCreateShuffleForQuestion(session, internalIndex);
-      return sanitizeQuestionForClient(q, order);
-    });
+    const pool = filterQuizPool(void 0, category ?? void 0, difficulty ?? void 0);
+    const order = session.questionOrder ?? [];
+    const limitedOrder = typeof limit === "number" && Number.isFinite(limit) ? order.slice(0, Math.max(0, limit)) : order;
+    const mapped = limitedOrder.map((idx) => {
+      const base = pool[idx] ?? QUIZ_POOL_INTERNAL[idx];
+      if (!base)
+        return null;
+      const shuffle = getOrCreateShuffleForQuestion(session, idx);
+      return sanitizeQuestionForClient(base, shuffle);
+    }).filter((q) => Boolean(q));
     record.updatedAt = nowIso();
     await this.saveRecord(record);
     return jsonResponse({ questions: mapped }, 200, origin);
@@ -1319,7 +1323,7 @@ var UserState = class {
     }
     record.coins -= entryCost;
     const totalQuestions = QUIZ_POOL_INTERNAL.length;
-    const order = shuffleArray([...Array(totalQuestions).keys()]);
+    const order = shuffleArray([...Array(totalQuestions).keys()]).slice(0, QUIZ_ROUND_QUESTIONS);
     const now = Date.now();
     const session = {
       id: crypto.randomUUID(),

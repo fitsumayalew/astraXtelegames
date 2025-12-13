@@ -16,6 +16,7 @@ import { apiQuizStart, apiQuizGetQuestions, apiQuizAnswer, apiQuizAssistFifty, a
 const TIMER_DURATION = 10;
 const MAX_LIVES = 3;
 const ENTRY_COST = 100;
+const ROUND_QUESTION_COUNT = 10;
 
 const QuizGame = () => {
   const { totalCoins, addCoins, spendCoins } = useCoins();
@@ -99,6 +100,11 @@ const QuizGame = () => {
     return () => clearInterval(timer);
   }, [currentQuestionIndex, showResults, isAnswered, gameStarted, freezeLeft]);
 
+  const clampPointer = (value: number, count: number) => {
+    if (count === 0) return 0;
+    return Math.min(Math.max(value, 0), count - 1);
+  };
+
   const handleTimeout = () => {
     const newLives = lives - 1;
     setLastLostLife(lives - 1);
@@ -141,7 +147,14 @@ const QuizGame = () => {
       }
       // After brief pause to show feedback, sync pointer from server
       setTimeout(() => {
-        setPointer(res.pointer);
+        const rawPointer = res.pointer ?? pointer + 1;
+        const reachedEnd = res.done || questionOrder.length === 0 || rawPointer >= questionOrder.length;
+        if (reachedEnd) {
+          endGame();
+          return;
+        }
+        const nextPointer = clampPointer(rawPointer, questionOrder.length);
+        setPointer(nextPointer);
         setTimeLeft(TIMER_DURATION);
         setSelectedAnswer(null);
         setIsAnswered(false);
@@ -204,16 +217,22 @@ const QuizGame = () => {
     try {
       const { session } = await apiQuizStart(ENTRY_COST);
       setSessionId(session.id);
-      const { questions: qs } = await apiQuizGetQuestions({ limit: 10 });
+      // Fetch the session-ordered questions already shuffled by the server
+      const { questions: qs } = await apiQuizGetQuestions({ limit: ROUND_QUESTION_COUNT });
       const mapped = qs.map((q) => ({
         question: q.question,
         options: q.options,
         correctAnswer: -1,
         coins: q.coinsReward ?? 5,
       })) as unknown as Question[];
+
+      if (mapped.length === 0) {
+        throw new Error("No questions available");
+      }
+
       setBackendQuestions(mapped);
-      setQuestionOrder(session.questionOrder ?? Array.from({ length: mapped.length }, (_, i) => i));
-      setPointer(session.pointer ?? 0);
+      setQuestionOrder(Array.from({ length: mapped.length }, (_, i) => i));
+      setPointer(clampPointer((session as any).pointer ?? 0, mapped.length));
       playSound("start");
       setGameStarted(true);
     } catch (e: any) {
@@ -236,7 +255,7 @@ const QuizGame = () => {
         <GameHeader coins={totalCoins} onNewGame={gameStarted ? resetGame : undefined} />
       )}
       
-      <div className="max-w-4xl mx-auto relative z-10 px-4 py-6 space-y-6">
+      <div className="max-w-3xl mx-auto relative z-10 px-2 py-2 md:px-4 md:py-5 space-y-3 md:space-y-5">
         {!gameStarted ? (
           <StartScreen 
             onStartGame={startGame}
@@ -249,14 +268,14 @@ const QuizGame = () => {
               </div>
             ) : (
             <>
-            <div className="flex flex-col md:flex-row gap-4 items-stretch">
+            <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-stretch">
               <div className="flex-1">
                 <Timer timeLeft={timeLeft} maxTime={TIMER_DURATION} frozen={freezeLeft > 0} />
               </div>
               <Lives lives={lives} lastLostLife={lastLostLife} />
             </div>
-            <div className="flex flex-col min-h-[calc(100vh-12rem)] gap-4">
-              <div className="flex-1 flex flex-col justify-start gap-4">
+            <div className="flex flex-col min-h-[calc(100vh-16rem)] gap-2.5 md:gap-4">
+              <div className="flex-1 flex flex-col justify-start gap-2.5 md:gap-4">
                 <QuestionCard
                   question={currentQuestion}
                   currentQuestion={currentQuestionIndex}
@@ -268,11 +287,11 @@ const QuizGame = () => {
                   hiddenOptions={hiddenOptions}
                 />
               </div>
-              <div className="flex items-center justify-center gap-5 mt-2 flex-wrap">
+              <div className="flex items-center justify-center gap-2.5 md:gap-5 mt-1 md:mt-2 flex-wrap">
                 <div className="relative">
                   <Button
                     variant="secondary"
-                    className="rounded-full w-12 h-12 p-0 bg-gradient-to-br from-green-500 to-green-600 text-white border-2 border-white/60 shadow-lg hover:opacity-90"
+                    className="rounded-full w-10 h-10 md:w-12 md:h-12 p-0 bg-gradient-to-br from-green-500 to-green-600 text-white border-2 border-white/60 shadow-lg hover:opacity-90"
                     onClick={async () => {
                       if (isAnswered) return;
                       try {
@@ -286,15 +305,15 @@ const QuizGame = () => {
                       playSound("click");
                     }}
                   >
-                    <span className="text-[11px] font-extrabold tracking-tight">50/50</span>
+                    <span className="text-[10px] md:text-[11px] font-extrabold tracking-tight">50/50</span>
                     <span className="sr-only">50/50</span>
                   </Button>
                   <div className="absolute -top-2 left-1/2 -translate-x-1/2">
                     <span
                       className={
                         freeFiftyUsed < 2
-                          ? "inline-flex items-center gap-1 rounded-full bg-black/60 text-white text-[9px] px-1.5 py-0.5 border border-white/30"
-                          : "inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-[9px] px-1.5 py-0.5 border border-yellow-600/60 shadow-sm"
+                          ? "inline-flex items-center gap-1 rounded-full bg-black/60 text-white text-[8px] md:text-[9px] px-1 py-0.5 md:px-1.5 border border-white/30"
+                          : "inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-[8px] md:text-[9px] px-1 py-0.5 md:px-1.5 border border-yellow-600/60 shadow-sm"
                       }
                     >
                       {freeFiftyUsed < 2 ? `Free (${2 - freeFiftyUsed})` : (<><CoinsIcon className="w-3 h-3" /> 20</>)}
@@ -304,7 +323,7 @@ const QuizGame = () => {
                 <div className="relative">
                   <Button
                     variant="secondary"
-                    className="rounded-full w-12 h-12 p-0 bg-gradient-to-br from-green-500 to-green-600 text-white border-2 border-white/60 shadow-lg hover:opacity-90"
+                    className="rounded-full w-10 h-10 md:w-12 md:h-12 p-0 bg-gradient-to-br from-green-500 to-green-600 text-white border-2 border-white/60 shadow-lg hover:opacity-90"
                     onClick={async () => {
                       if (isAnswered || freezeLeft > 0) return;
                       try {
@@ -318,15 +337,15 @@ const QuizGame = () => {
                       playSound("click");
                     }}
                   >
-                    <Snowflake className="w-6 h-6" />
+                    <Snowflake className="w-5 h-5 md:w-6 md:h-6" />
                     <span className="sr-only">Freeze Timer</span>
                   </Button>
                   <div className="absolute -top-2 left-1/2 -translate-x-1/2">
                     <span
                       className={
                         freeFreezeUsed < 2
-                          ? "inline-flex items-center gap-1 rounded-full bg-black/60 text-white text-[9px] px-1.5 py-0.5 border border-white/30"
-                          : "inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-[9px] px-1.5 py-0.5 border border-yellow-600/60 shadow-sm"
+                          ? "inline-flex items-center gap-1 rounded-full bg-black/60 text-white text-[8px] md:text-[9px] px-1 py-0.5 md:px-1.5 border border-white/30"
+                          : "inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-[8px] md:text-[9px] px-1 py-0.5 md:px-1.5 border border-yellow-600/60 shadow-sm"
                       }
                     >
                       {freeFreezeUsed < 2 ? `Free (${2 - freeFreezeUsed})` : (<><CoinsIcon className="w-3 h-3" /> 10</>)}
@@ -336,13 +355,20 @@ const QuizGame = () => {
                 <div className="relative">
                   <Button
                     variant="secondary"
-                    className="rounded-full w-12 h-12 p-0 bg-gradient-to-br from-green-500 to-green-600 text-white border-2 border-white/60 shadow-lg hover:opacity-90"
+                    className="rounded-full w-10 h-10 md:w-12 md:h-12 p-0 bg-gradient-to-br from-green-500 to-green-600 text-white border-2 border-white/60 shadow-lg hover:opacity-90"
                     onClick={async () => {
                       if (isAnswered) return;
                       try {
                         if (!sessionId) throw new Error("No session");
-                        const res = await apiQuizSkip(sessionId);
-                        setPointer(res.pointer);
+                        const res = await apiQuizSkip(sessionId) as { pointer: number; done: boolean }; // Ensure 'done' is included in the type
+                        const rawPointer = res.pointer ?? pointer + 1;
+                        const reachedEnd = res.done || questionOrder.length === 0 || rawPointer >= questionOrder.length;
+                        if (reachedEnd) {
+                          endGame();
+                          return;
+                        }
+                        const nextPointer = clampPointer(rawPointer, questionOrder.length);
+                        setPointer(nextPointer);
                       } catch (e) {
                         setQuestionOrder((q) => [...q, q[pointer]]);
                         setPointer((p) => p + 1);
@@ -356,11 +382,11 @@ const QuizGame = () => {
                       playSound("click");
                     }}
                   >
-                    <SkipForward className="w-6 h-6" />
+                    <SkipForward className="w-5 h-5 md:w-6 md:h-6" />
                     <span className="sr-only">Skip Question</span>
                   </Button>
                   <div className="absolute -top-2 left-1/2 -translate-x-1/2">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-black/60 text-white text-[9px] px-1.5 py-0.5 border border-white/30">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-black/60 text-white text-[8px] md:text-[9px] px-1 py-0.5 md:px-1.5 border border-white/30">
                       Free
                     </span>
                   </div>

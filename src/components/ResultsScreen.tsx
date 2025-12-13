@@ -33,6 +33,7 @@ const ResultsScreen = ({
       stats={stats}
       coinsEarned={coinsEarned}
       onPlayAgain={onPlayAgain}
+      compactHeight
       winMessage="Great Job!"
       loseMessage="Better Luck Next Time"
     />
