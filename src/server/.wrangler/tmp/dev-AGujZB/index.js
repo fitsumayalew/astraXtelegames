@@ -1004,8 +1004,11 @@ var src_default = {
 };
 var UserState = class {
   state;
+  // Server-side Sudoku sessions keyed by session id
+  sudokuSessions;
   constructor(state) {
     this.state = state;
+    this.sudokuSessions = /* @__PURE__ */ new Map();
   }
   async fetch(request) {
     const url = new URL(request.url);
@@ -1064,6 +1067,18 @@ var UserState = class {
           if (request.method !== "POST")
             return this.methodNotAllowed(origin);
           return await this.handleQuizSessionStart(request, userId, origin);
+        case "/api/sudoku/start":
+          if (request.method !== "POST")
+            return this.methodNotAllowed(origin);
+          return await this.handleSudokuStart(request, userId, origin);
+        case "/api/sudoku/check":
+          if (request.method !== "POST")
+            return this.methodNotAllowed(origin);
+          return await this.handleSudokuCheck(request, userId, origin);
+        case "/api/sudoku/hint":
+          if (request.method !== "POST")
+            return this.methodNotAllowed(origin);
+          return await this.handleSudokuHint(request, userId, origin);
         default:
           if (pathname.startsWith("/api/quiz/session/")) {
             const parts = pathname.split("/");

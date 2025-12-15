@@ -209,3 +209,17 @@ export const apiQuizSkip = (sessionId: string) =>
 
 export const apiQuizEnd = (sessionId: string) =>
   request<{ summary: { lives: number; score: number; coinsEarned: number } }>(`/api/quiz/session/${sessionId}/end`, "POST");
+
+// Sudoku API
+export type SudokuStartResponse = { sessionId: string; puzzle: (number|null)[][]; time: number };
+export type SudokuCheckResponse = { invalidCells: string[]; correctSoFar: boolean; complete: boolean };
+export type SudokuHintResponse = { row?: number; col?: number; value?: number; message?: string };
+
+export const apiSudokuStart = (difficulty: "easy" | "medium" | "hard") =>
+  request<SudokuStartResponse>("/api/sudoku/start", "POST", { difficulty });
+
+export const apiSudokuCheck = (sessionId: string, grid: (number|null)[][]) =>
+  request<SudokuCheckResponse>("/api/sudoku/check", "POST", { sessionId, grid });
+
+export const apiSudokuHint = (sessionId: string, grid: (number|null)[][]) =>
+  request<SudokuHintResponse>("/api/sudoku/hint", "POST", { sessionId, grid });

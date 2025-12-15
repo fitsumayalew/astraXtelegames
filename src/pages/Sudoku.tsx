@@ -1,15 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useCoins } from "@/contexts/CoinContext";
 import { useToast } from "@/hooks/use-toast";
-import {
-  generatePuzzle,
-  validateSolution,
-  getInvalidCells,
-  getRandomEmptyCell,
-  SudokuGrid as GridType,
-  Difficulty,
-  DIFFICULTY_CONFIG,
-} from "@/lib/sudoku";
+import { SudokuGrid as GridType, Difficulty, DIFFICULTY_CONFIG } from "@/lib/sudoku";
+import { apiSudokuStart, apiSudokuCheck, apiSudokuHint } from "@/lib/api";
 import GameHeader from "@/components/shared/GameHeader";
 import SudokuGrid from "@/components/sudoku/SudokuGrid";
 import NumberPad from "@/components/sudoku/NumberPad";
@@ -32,6 +25,7 @@ import { Clock, Grid3x3, Target, Lightbulb, CheckCircle, Info } from "lucide-rea
 import sudokuHero from "@/assets/sudoku-hero.png";
 
 const HINT_COST = 10;
+const FREE_HINTS = 5;
 
 const Sudoku = () => {
   const { totalCoins, addCoins, spendCoins } = useCoins();
@@ -40,7 +34,7 @@ const Sudoku = () => {
   const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | null>(null);
   const [puzzle, setPuzzle] = useState<GridType>([]);
-  const [solution, setSolution] = useState<GridType>([]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentGrid, setCurrentGrid] = useState<GridType>([]);
   const [fixedCells, setFixedCells] = useState<Set<string>>(new Set());
   const [hintCells, setHintCells] = useState<Set<string>>(new Set());
@@ -52,6 +46,7 @@ const Sudoku = () => {
   const [timeLeft, setTimeLeft] = useState(0);
   const [showNewGameConfirm, setShowNewGameConfirm] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [freeHintsLeft, setFreeHintsLeft] = useState(FREE_HINTS);
 
   // Timer
   useEffect(() => {
@@ -70,32 +65,34 @@ const Sudoku = () => {
     return () => clearInterval(timer);
   }, [gameStarted, gameOver, timeLeft]);
 
-  const initializeGame = useCallback((diff: Difficulty) => {
-    const { puzzle: newPuzzle, solution: newSolution } = generatePuzzle(diff);
-    const fixed = new Set<string>();
-
-    for (let row = 0; row < 9; row++) {
-      for (let col = 0; col < 9; col++) {
-        if (newPuzzle[row][col] !== null) {
-          fixed.add(`${row}-${col}`);
+  const initializeGame = useCallback(async (diff: Difficulty) => {
+    try {
+      const res = await apiSudokuStart(diff);
+      const newPuzzle = res.puzzle as GridType;
+      const fixed = new Set<string>();
+      for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 9; col++) {
+          if (newPuzzle[row][col] !== null) fixed.add(`${row}-${col}`);
         }
       }
+      setPuzzle(newPuzzle);
+      setCurrentGrid(newPuzzle.map((row) => [...row]));
+      setFixedCells(fixed);
+      setHintCells(new Set());
+      setSelectedCell(null);
+      setInvalidCells(new Set());
+      setDifficulty(diff);
+      setTimeLeft(res.time);
+      setElapsedTime(0);
+      setFreeHintsLeft(FREE_HINTS);
+      setGameStarted(true);
+      setGameOver(false);
+      setWon(false);
+      setSessionId(res.sessionId);
+    } catch (err) {
+      toast({ title: "Failed to start Sudoku", description: (err as Error).message, variant: "destructive" });
     }
-
-    setPuzzle(newPuzzle);
-    setSolution(newSolution);
-    setCurrentGrid(newPuzzle.map((row) => [...row]));
-    setFixedCells(fixed);
-    setHintCells(new Set());
-    setSelectedCell(null);
-    setInvalidCells(new Set());
-    setDifficulty(diff);
-    setTimeLeft(DIFFICULTY_CONFIG[diff].time);
-    setElapsedTime(0);
-    setGameStarted(true);
-    setGameOver(false);
-    setWon(false);
-  }, []);
+  }, [toast]);
 
   const handleCellClick = (row: number, col: number) => {
     const cellKey = `${row}-${col}`;
@@ -115,65 +112,69 @@ const Sudoku = () => {
     newGrid[row][col] = num;
     setCurrentGrid(newGrid);
 
-    // Check if puzzle is complete and correct
-    const isComplete = newGrid.every((row) => row.every((cell) => cell !== null));
-    if (isComplete && validateSolution(newGrid, solution)) {
-      handleGameOver(true);
-    }
+    // Completion will be checked through backend on demand
   };
 
-  const handleCheckSolution = () => {
-    const invalid = getInvalidCells(currentGrid, solution);
-    setInvalidCells(invalid);
-
-    if (invalid.size > 0) {
-      toast({
-        title: "Incorrect cells found",
-        description: `${invalid.size} cell${invalid.size > 1 ? "s are" : " is"} highlighted in red`,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Looking good!",
-        description: "All filled cells are correct so far",
-      });
+  const handleCheckSolution = async () => {
+    if (!sessionId) return;
+    try {
+      const res = await apiSudokuCheck(sessionId, currentGrid);
+      const invalidSet = new Set<string>(res.invalidCells);
+      setInvalidCells(invalidSet);
+      if (res.invalidCells.length > 0) {
+        toast({
+          title: "Incorrect cells found",
+          description: `${res.invalidCells.length} cell${res.invalidCells.length > 1 ? "s are" : " is"} highlighted in red`,
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Looking good!", description: "All filled cells are correct so far" });
+      }
+      if (res.complete) {
+        handleGameOver(true);
+      }
+    } catch (err) {
+      toast({ title: "Check failed", description: (err as Error).message, variant: "destructive" });
     }
   };
 
   const handleHint = async () => {
-    const paid = await spendCoins(HINT_COST);
-    if (!paid) {
-      toast({
-        title: "Not enough coins",
-        description: `You need ${HINT_COST} coins to use a hint`,
-        variant: "destructive",
-      });
-      return;
+    const usingFree = freeHintsLeft > 0;
+    if (!usingFree) {
+      const paid = await spendCoins(HINT_COST);
+      if (!paid) {
+        toast({
+          title: "Not enough coins",
+          description: `You need ${HINT_COST} coins to use a hint`,
+          variant: "destructive",
+        });
+        return;
+      }
     }
-
-    const emptyCell = getRandomEmptyCell(currentGrid);
-    if (!emptyCell) {
-      toast({
-        title: "No empty cells",
-        description: "The puzzle is already complete",
-      });
-      await addCoins(HINT_COST); // Refund on no-op
-      return;
+    try {
+      if (!sessionId) return;
+      const res = await apiSudokuHint(sessionId, currentGrid);
+      if (res.message === "No empty cells" || res.row === undefined || res.col === undefined || res.value === undefined) {
+        toast({ title: "No empty cells", description: "The puzzle is already complete" });
+        if (!usingFree) await addCoins(HINT_COST);
+        return;
+      }
+      const { row, col, value } = res;
+      const newGrid = currentGrid.map((r) => [...r]);
+      newGrid[row!][col!] = value!;
+      setCurrentGrid(newGrid);
+      const newHintCells = new Set(hintCells);
+      newHintCells.add(`${row}-${col}`);
+      setHintCells(newHintCells);
+      if (usingFree) {
+        setFreeHintsLeft((prev) => Math.max(0, prev - 1));
+        toast({ title: "Hint revealed (free)", description: `Cell filled at row ${row! + 1}, column ${col! + 1}` });
+      } else {
+        toast({ title: "Hint revealed!", description: `Cell filled at row ${row! + 1}, column ${col! + 1}` });
+      }
+    } catch (err) {
+      toast({ title: "Hint failed", description: (err as Error).message, variant: "destructive" });
     }
-
-    const [row, col] = emptyCell;
-    const newGrid = currentGrid.map((r) => [...r]);
-    newGrid[row][col] = solution[row][col];
-    setCurrentGrid(newGrid);
-    
-    const newHintCells = new Set(hintCells);
-    newHintCells.add(`${row}-${col}`);
-    setHintCells(newHintCells);
-
-    toast({
-      title: "Hint revealed!",
-      description: `Cell filled at row ${row + 1}, column ${col + 1}`,
-    });
   };
 
   const handleGameOver = (isWin: boolean) => {
