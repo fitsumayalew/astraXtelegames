@@ -30,7 +30,8 @@ const SudokuGrid = ({
       Math.floor(selectedCell[0] / 3) === Math.floor(row / 3) &&
       Math.floor(selectedCell[1] / 3) === Math.floor(col / 3);
 
-    let classes = "w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-lg md:text-xl font-semibold transition-all ";
+    // Smaller cells on mobile to reduce height; keep desktop size similar
+    let classes = "w-8 h-8 md:w-12 md:h-12 flex items-center justify-center text-base md:text-xl font-semibold transition-all ";
 
     // Cursor
     if (isFixed || isHint) {

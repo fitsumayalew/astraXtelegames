@@ -14,8 +14,8 @@ const NumberPad = ({ onNumberClick, disabled }: NumberPadProps) => {
           key={num}
           onClick={() => onNumberClick(num)}
           disabled={disabled}
-          size="lg"
-          className="w-14 h-14 md:w-16 md:h-16 text-xl font-bold rounded-full"
+          size="sm"
+          className="w-10 h-10 md:w-14 md:h-14 text-base md:text-xl font-bold rounded-full"
           variant="default"
         >
           {num}
@@ -24,11 +24,11 @@ const NumberPad = ({ onNumberClick, disabled }: NumberPadProps) => {
       <Button
         onClick={() => onNumberClick(null)}
         disabled={disabled}
-        size="lg"
-        className="w-14 h-14 md:w-16 md:h-16 rounded-full"
+        size="sm"
+        className="w-10 h-10 md:w-14 md:h-14 rounded-full"
         variant="outline"
       >
-        <Eraser className="w-6 h-6" />
+        <Eraser className="w-5 h-5 md:w-6 md:h-6" />
       </Button>
     </div>
   );
