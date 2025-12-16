@@ -109,7 +109,11 @@ async function request<T>(path: string, method: HttpMethod, body?: unknown): Pro
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const message = (data as any)?.error ?? "Request failed";
-    throw new Error(message);
+    const error: any = new Error(message);
+    // Preserve status and any server-provided payload (e.g., target word on expiry)
+    error.status = res.status;
+    Object.assign(error, data);
+    throw error;
   }
 
   return data as T;

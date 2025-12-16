@@ -201,6 +201,10 @@ const WordleGame = () => {
         if (res.target) lastTarget = res.target;
       } catch (err: any) {
         const msg = String(err?.message ?? "Validation failed");
+        if (/expired/i.test(msg)) {
+          if (err?.target) lastTarget = String(err.target);
+          break;
+        }
         toast({ title: "Timeout validation error", description: msg, variant: "destructive" });
         break;
       }
@@ -267,6 +271,7 @@ const WordleGame = () => {
           setWon(false);
           setShowGameOver(true);
           playSound("lose");
+          if (err?.target) setTargetWord(String(err.target).toUpperCase());
         } else if (/rate/i.test(msg)) {
           toast({ title: "Slow down", description: "Too many guesses; please slow down.", variant: "destructive" });
         } else if (/No active session|Mismatched gameId/i.test(msg)) {

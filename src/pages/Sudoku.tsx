@@ -301,13 +301,13 @@ const Sudoku = () => {
       {(gameStarted && !gameOver) && (
         <div
           className="absolute inset-0 z-0 bg-center bg-cover pointer-events-none animate-wordle-bg"
-          style={{ backgroundImage: 'url(/image/pop-back.png)', opacity: 0.9 }}
+          style={{ backgroundImage: 'url(/image/sodoku-g-bg.png)', opacity: 0.9 }}
         ></div>
       )}
       {gameOver && (
         <div
           className="absolute inset-0 z-0 bg-center bg-cover pointer-events-none animate-wordle-bg"
-          style={{ backgroundImage: 'url(/image/pop-back.png)', opacity: 0.9 }}
+          style={{ backgroundImage: 'url(/image/sodoku-g-bg.png)', opacity: 0.9 }}
         ></div>
       )}
 
@@ -320,7 +320,7 @@ const Sudoku = () => {
             description="Fill the 9×9 grid with logic and strategy"
             icon={Grid3x3}
             hideHero
-            backgroundImage="/image/pop-quize.png"
+            backgroundImage="/image/sudoku.png"
             backgroundOpacity={0.92}
             fullScreenBackground
             compactHeight
@@ -381,34 +381,34 @@ const Sudoku = () => {
         )}
 
         {gameStarted && !gameOver && (
-          <div className="space-y-5 md:space-y-6">
-            <div className="bg-black/40 border border-white/10 rounded-3xl p-4 md:p-5 shadow-2xl backdrop-blur-md flex flex-col gap-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="flex flex-wrap items-center gap-2 md:gap-3">
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 border border-white/20 shadow-sm">
-                    <Clock className={`w-5 h-5 ${timeLeft < 30 ? "text-red-300" : "text-white"}`} />
-                    <span className="text-sm font-semibold">{formatTime(timeLeft)}</span>
-                  </div>
+          <div className="space-y-4 md:space-y-5">
+            <div className="bg-black/40 border border-white/10 rounded-3xl p-4 md:p-5 shadow-2xl backdrop-blur-md flex flex-col gap-3 md:gap-4">
+              <div className="flex items-center justify-between gap-3 md:gap-4">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 border border-white/20 shadow-sm">
+                  <Clock className={`w-5 h-5 ${timeLeft < 30 ? "text-red-300" : "text-white"}`} />
+                  <span className="text-sm font-semibold">{formatTime(timeLeft)}</span>
+                </div>
+
+                <div className="flex items-center gap-2 md:gap-3 ml-auto">
                   <Button
                     onClick={handleHint}
-                    className="rounded-full h-10 md:h-12 px-4 md:px-5 bg-gradient-to-br from-amber-300 via-orange-400 to-amber-500 text-black font-extrabold border-2 border-white/70 shadow-lg hover:opacity-90"
+                    size="icon"
+                    className="relative rounded-full w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-amber-300 via-orange-400 to-amber-500 text-black font-extrabold border-2 border-white/70 shadow-lg hover:opacity-90"
+                    aria-label="Use hint"
                   >
-                    <div className="flex items-center gap-2 text-sm md:text-base">
-                      <Lightbulb className="w-4 h-4" />
-                      <span>{freeHintsLeft > 0 ? `(${freeHintsLeft})` : `${HINT_COST} Coins`}</span>
-                    </div>
+                    <Lightbulb className="w-5 h-5 md:w-6 md:h-6" />
+                    <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/80 text-[10px] font-bold text-amber-200 border border-white/60">
+                      {freeHintsLeft > 0 ? freeHintsLeft : HINT_COST}
+                    </span>
                   </Button>
                   <Button
                     onClick={handleCheckSolution}
-                    className="rounded-full h-10 md:h-12 px-4 md:px-5 bg-gradient-to-br from-green-500 to-green-600 text-white font-bold border-2 border-white/70 shadow-lg hover:opacity-90"
+                    size="icon"
+                    className="rounded-full w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-green-500 to-green-600 text-white font-bold border-2 border-white/70 shadow-lg hover:opacity-90"
+                    aria-label="Check solution"
                   >
-                    <div className="flex items-center gap-2 text-sm md:text-base">
-                      <CheckCircle className="w-4 h-4" />
-                    </div>
+                    <CheckCircle className="w-5 h-5 md:w-6 md:h-6" />
                   </Button>
-                </div>
-
-                <div className="flex items-center gap-2 md:gap-3">
                 </div>
               </div>
 
