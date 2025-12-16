@@ -59,7 +59,14 @@ const GameSelector = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-secondary/5 to-primary/5 py-8 px-4">
+    <div className="relative min-h-screen overflow-hidden py-8 px-4">
+      {/* Full-page background */}
+      <div
+        className="absolute inset-0 -z-10 bg-center bg-cover"
+        style={{ backgroundImage: 'url(/image/whole-bg.png)' }}
+      />
+
+      {/* Page content */}
       <div className="max-w-6xl mx-auto">
         <header className="sticky top-0 z-50 w-full bg-card/95 backdrop-blur-sm shadow-[var(--shadow-card)] rounded-none md:rounded-2xl p-3 md:p-6 mb-4 md:mb-8 animate-slide-in">
           <div className="flex items-center justify-between gap-2 md:gap-4">
