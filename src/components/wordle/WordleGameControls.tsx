@@ -19,7 +19,7 @@ const WordleGameControls = ({
   assistCost,
 }: WordleGameControlsProps) => {
   const buttonClass =
-    "relative h-12 w-12 sm:h-13 sm:w-13 md:h-16 md:w-16 rounded-full bg-green-600 hover:bg-green-500 text-white shadow-lg border-2 border-green-500 disabled:opacity-60 disabled:cursor-not-allowed";
+    "relative h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 rounded-full bg-green-600 hover:bg-green-500 text-white shadow-lg border-2 border-green-500 disabled:opacity-60 disabled:cursor-not-allowed";
 
   const renderBadge = () => {
     if (freeAssistsLeft > 0) {
@@ -49,7 +49,7 @@ const WordleGameControls = ({
         className={buttonClass}
       >
         {renderBadge()}
-        <Search className="w-8 h-8 md:w-10 md:h-10" />
+        <Search className="w-5 h-5 md:w-7 md:h-7" />
       </Button>
 
       <Button
@@ -61,7 +61,7 @@ const WordleGameControls = ({
         className={buttonClass}
       >
         {renderBadge()}
-        <Lightbulb className="w-8 h-8 md:w-10 md:h-10" />
+        <Lightbulb className="w-5 h-5 md:w-7 md:h-7" />
       </Button>
     </div>
   );

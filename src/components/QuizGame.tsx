@@ -42,28 +42,36 @@ const QuizGame = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [backendQuestions, setBackendQuestions] = useState<Question[]>([]);
 
-  const getMediaUrl = (fileName: string) => `/media/${encodeURIComponent(fileName)}`;
+  const getMediaUrl = (fileName: string) => `/media/quiz/${encodeURIComponent(fileName)}`;
   const SOUND_URLS = {
-    click: getMediaUrl("clickbuton.webm"),
+    click: getMediaUrl("click.webm"),
     wrong: getMediaUrl("wrong answer.webm"),
-    win: getMediaUrl("word found.webm"),
-    lose: getMediaUrl("whoosh2.webm"),
+    win: getMediaUrl("right answer.webm"),
+    lose: getMediaUrl("wrong answer.webm"), // Using 'wrong answer' for lose or 'bar complete' or 'timesUp'? User said "use appropriate places". "timesUp" for timeout? "wrong answer" for life loss?
+    // Let's use:
+    // click -> click.webm
+    // wrong -> wrong answer.webm
+    // win -> right answer.webm
+    // lose (game over) -> timesUp.webm or coins.webm? Maybe "bar complete.webm" for finish? 
+    // "lose" in code is used for life loss or game over. 
+    // Let's use 'wrong answer.webm' for life loss, and maybe 'timesUp.webm' for timeout/game over?
+    // The code calls playSound("lose") on timeout or game over. Let's map "lose" to "timesUp.webm".
     start: getMediaUrl("woosh.webm"),
   } as const;
   type SoundKey = keyof typeof SOUND_URLS;
   const SOUND_VOLUMES: Record<SoundKey, number> = {
-    click: 0.45,
+    click: 0.5,
     wrong: 0.6,
-    win: 0.7,
-    lose: 0.55,
-    start: 0.55,
+    win: 0.6,
+    lose: 0.6,
+    start: 0.5,
   };
 
   const playSound = useCallback((sound: SoundKey) => {
     if (!soundEnabled) return;
     const audio = new Audio(SOUND_URLS[sound]);
     audio.volume = SOUND_VOLUMES[sound] ?? 0.4;
-    audio.play().catch(() => {});
+    audio.play().catch(() => { });
   }, [soundEnabled]);
 
   useEffect(() => {
@@ -240,160 +248,166 @@ const QuizGame = () => {
     }
   };
 
+  // Auto-start game on mount
+  useEffect(() => {
+    if (!gameStarted && !sessionId) {
+      startGame();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Background image (in-game) similar to Wordle */}
-      {gameStarted && (
-        <div
-          className="absolute inset-0 z-0 bg-center bg-cover pointer-events-none animate-wordle-bg"
-          style={{ backgroundImage: 'url(/image/pop-back.png)', opacity: 0.9 }}
-        ></div>
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-b from-[#2241d5] to-[#2241d5] md:to-[#0a1a44]">
+      {/* Background Pattern */}
+      <div
+        className="absolute inset-0 z-0 pointer-events-none opacity-30"
+        style={{
+          backgroundImage: 'url(/image/tile-sheet0.png)',
+          backgroundRepeat: 'repeat',
+          backgroundSize: 'auto'
+        }}
+      ></div>
+
+      {/* Hide header during gameplay; show on results */}
+      {showResults && (
+        <GameHeader coins={totalCoins} onNewGame={resetGame} />
       )}
 
-      {/* Hide header during gameplay; show on start/results */}
-      {(!gameStarted || showResults) && (
-        <GameHeader coins={totalCoins} onNewGame={gameStarted ? resetGame : undefined} />
-      )}
-      
       <div className="max-w-3xl mx-auto relative z-10 px-2 py-2 md:px-4 md:py-5 space-y-3 md:space-y-5">
-        {!gameStarted ? (
-          <StartScreen 
-            onStartGame={startGame}
-          />
-        ) : !showResults ? (
+        {!showResults ? (
           <>
             {backendQuestions.length === 0 ? (
               <div className="flex items-center justify-center py-10">
-                <span className="text-sm text-muted-foreground">Loading questions…</span>
+                <span className="text-sm text-white/80 animate-pulse">Loading Quiz...</span>
               </div>
             ) : (
-            <>
-            <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-stretch">
-              <div className="flex-1">
-                <Timer timeLeft={timeLeft} maxTime={TIMER_DURATION} frozen={freezeLeft > 0} />
-              </div>
-              <Lives lives={lives} lastLostLife={lastLostLife} />
-            </div>
-            <div className="flex flex-col min-h-[calc(100vh-16rem)] gap-2.5 md:gap-4">
-              <div className="flex-1 flex flex-col justify-start gap-2.5 md:gap-4">
-                <QuestionCard
-                  question={currentQuestion}
-                  currentQuestion={currentQuestionIndex}
-                  totalQuestions={backendQuestions.length}
-                  selectedAnswer={selectedAnswer}
-                  onSelectAnswer={handleSelectAnswer}
-                  disabled={isAnswered}
-                  isCorrect={isCorrect}
-                  hiddenOptions={hiddenOptions}
-                />
-              </div>
-              <div className="flex items-center justify-center gap-2.5 md:gap-5 mt-1 md:mt-2 flex-wrap">
-                <div className="relative">
-                  <Button
-                    variant="secondary"
-                    className="rounded-full w-10 h-10 md:w-12 md:h-12 p-0 bg-gradient-to-br from-green-500 to-green-600 text-white border-2 border-white/60 shadow-lg hover:opacity-90"
-                    onClick={async () => {
-                      if (isAnswered) return;
-                      try {
-                        if (!sessionId) throw new Error("No session");
-                        const res = await apiQuizAssistFifty(sessionId);
-                        setHiddenOptions(new Set(res.indices));
-                        setFreeFiftyUsed((n) => n + 1);
-                      } catch (e) {
-                        toast({ title: "Assist failed", description: "Server error", variant: "destructive" });
-                      }
-                      playSound("click");
-                    }}
-                  >
-                    <span className="text-[10px] md:text-[11px] font-extrabold tracking-tight">50/50</span>
-                    <span className="sr-only">50/50</span>
-                  </Button>
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2">
-                    <span
-                      className={
-                        freeFiftyUsed < 2
-                          ? "inline-flex items-center gap-1 rounded-full bg-black/60 text-white text-[8px] md:text-[9px] px-1 py-0.5 md:px-1.5 border border-white/30"
-                          : "inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-[8px] md:text-[9px] px-1 py-0.5 md:px-1.5 border border-yellow-600/60 shadow-sm"
-                      }
-                    >
-                      {freeFiftyUsed < 2 ? `(${2 - freeFiftyUsed})` : (<><CoinsIcon className="w-3 h-3" /> 20</>)}
-                    </span>
+              <>
+                <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-stretch">
+                  <div className="flex-1">
+                    <Timer timeLeft={timeLeft} maxTime={TIMER_DURATION} frozen={freezeLeft > 0} />
+                  </div>
+                  <Lives lives={lives} lastLostLife={lastLostLife} />
+                </div>
+                <div className="flex flex-col min-h-[calc(100vh-16rem)] gap-2.5 md:gap-4">
+                  <div className="flex-1 flex flex-col justify-start gap-2.5 md:gap-4">
+                    <QuestionCard
+                      question={currentQuestion}
+                      currentQuestion={currentQuestionIndex}
+                      totalQuestions={backendQuestions.length}
+                      selectedAnswer={selectedAnswer}
+                      onSelectAnswer={handleSelectAnswer}
+                      disabled={isAnswered}
+                      isCorrect={isCorrect}
+                      hiddenOptions={hiddenOptions}
+                    />
+                  </div>
+                  <div className="flex items-center justify-center gap-4 md:gap-6 mt-2 md:mt-4 flex-wrap">
+                    <div className="relative group">
+                      <Button
+                        variant="secondary"
+                        className="rounded-full w-14 h-14 md:w-16 md:h-16 p-0 bg-[#0c3980] hover:bg-[#0c3980]/90 text-white border-2 border-white/40 shadow-xl transition-all hover:scale-105 active:scale-95"
+                        onClick={async () => {
+                          if (isAnswered) return;
+                          try {
+                            if (!sessionId) throw new Error("No session");
+                            const res = await apiQuizAssistFifty(sessionId);
+                            setHiddenOptions(new Set(res.indices));
+                            setFreeFiftyUsed((n) => n + 1);
+                          } catch (e) {
+                            toast({ title: "Assist failed", description: "Server error", variant: "destructive" });
+                          }
+                          playSound("click");
+                        }}
+                      >
+                        <span className="text-sm md:text-base font-extrabold tracking-tight">50/50</span>
+                        <span className="sr-only">50/50</span>
+                      </Button>
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                        <span
+                          className={
+                            freeFiftyUsed < 2
+                              ? "inline-flex items-center gap-1 rounded-full bg-black/60 text-white text-[10px] md:text-xs px-2 py-0.5 border border-white/30 backdrop-blur-sm"
+                              : "inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-[10px] md:text-xs px-2 py-0.5 border border-yellow-600/60 shadow-sm"
+                          }
+                        >
+                          {freeFiftyUsed < 2 ? `(${2 - freeFiftyUsed})` : (<><CoinsIcon className="w-3 h-3" /> 20</>)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="relative group">
+                      <Button
+                        variant="secondary"
+                        className="rounded-full w-14 h-14 md:w-16 md:h-16 p-0 bg-[#0c3980] hover:bg-[#0c3980]/90 text-white border-2 border-white/40 shadow-xl transition-all hover:scale-105 active:scale-95"
+                        onClick={async () => {
+                          if (isAnswered || freezeLeft > 0) return;
+                          try {
+                            if (!sessionId) throw new Error("No session");
+                            const res = await apiQuizAssistFreeze(sessionId);
+                            setFreezeLeft(res.freezeSeconds ?? 8);
+                            setFreeFreezeUsed((n) => n + 1);
+                          } catch (e) {
+                            toast({ title: "Assist failed", description: "Server error", variant: "destructive" });
+                          }
+                          playSound("click");
+                        }}
+                      >
+                        <Snowflake className="w-7 h-7 md:w-8 md:h-8" />
+                        <span className="sr-only">Freeze Timer</span>
+                      </Button>
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                        <span
+                          className={
+                            freeFreezeUsed < 2
+                              ? "inline-flex items-center gap-1 rounded-full bg-black/60 text-white text-[10px] md:text-xs px-2 py-0.5 border border-white/30 backdrop-blur-sm"
+                              : "inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-[10px] md:text-xs px-2 py-0.5 border border-yellow-600/60 shadow-sm"
+                          }
+                        >
+                          {freeFreezeUsed < 2 ? `(${2 - freeFreezeUsed})` : (<><CoinsIcon className="w-3 h-3" /> 10</>)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="relative group">
+                      <Button
+                        variant="secondary"
+                        className="rounded-full w-14 h-14 md:w-16 md:h-16 p-0 bg-[#0c3980] hover:bg-[#0c3980]/90 text-white border-2 border-white/40 shadow-xl transition-all hover:scale-105 active:scale-95"
+                        onClick={async () => {
+                          if (isAnswered) return;
+                          try {
+                            if (!sessionId) throw new Error("No session");
+                            const res = await apiQuizSkip(sessionId) as { pointer: number; done: boolean }; // Ensure 'done' is included in the type
+                            const rawPointer = res.pointer ?? pointer + 1;
+                            const reachedEnd = res.done || questionOrder.length === 0 || rawPointer >= questionOrder.length;
+                            if (reachedEnd) {
+                              endGame();
+                              return;
+                            }
+                            const nextPointer = clampPointer(rawPointer, questionOrder.length);
+                            setPointer(nextPointer);
+                          } catch (e) {
+                            setQuestionOrder((q) => [...q, q[pointer]]);
+                            setPointer((p) => p + 1);
+                          }
+                          setTimeLeft(TIMER_DURATION);
+                          setSelectedAnswer(null);
+                          setIsAnswered(false);
+                          setIsCorrect(null);
+                          setHiddenOptions(new Set());
+                          setFreezeLeft(0);
+                          playSound("click");
+                        }}
+                      >
+                        <SkipForward className="w-7 h-7 md:w-8 md:h-8" />
+                        <span className="sr-only">Skip Question</span>
+                      </Button>
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-black/60 text-white text-[10px] md:text-xs px-2 py-0.5 border border-white/30 backdrop-blur-sm">
+                          Free
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="relative">
-                  <Button
-                    variant="secondary"
-                    className="rounded-full w-10 h-10 md:w-12 md:h-12 p-0 bg-gradient-to-br from-green-500 to-green-600 text-white border-2 border-white/60 shadow-lg hover:opacity-90"
-                    onClick={async () => {
-                      if (isAnswered || freezeLeft > 0) return;
-                      try {
-                        if (!sessionId) throw new Error("No session");
-                        const res = await apiQuizAssistFreeze(sessionId);
-                        setFreezeLeft(res.freezeSeconds ?? 8);
-                        setFreeFreezeUsed((n) => n + 1);
-                      } catch (e) {
-                        toast({ title: "Assist failed", description: "Server error", variant: "destructive" });
-                      }
-                      playSound("click");
-                    }}
-                  >
-                    <Snowflake className="w-5 h-5 md:w-6 md:h-6" />
-                    <span className="sr-only">Freeze Timer</span>
-                  </Button>
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2">
-                    <span
-                      className={
-                        freeFreezeUsed < 2
-                          ? "inline-flex items-center gap-1 rounded-full bg-black/60 text-white text-[8px] md:text-[9px] px-1 py-0.5 md:px-1.5 border border-white/30"
-                          : "inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-[8px] md:text-[9px] px-1 py-0.5 md:px-1.5 border border-yellow-600/60 shadow-sm"
-                      }
-                    >
-                      {freeFreezeUsed < 2 ? `(${2 - freeFreezeUsed})` : (<><CoinsIcon className="w-3 h-3" /> 10</>)}
-                    </span>
-                  </div>
-                </div>
-                <div className="relative">
-                  <Button
-                    variant="secondary"
-                    className="rounded-full w-10 h-10 md:w-12 md:h-12 p-0 bg-gradient-to-br from-green-500 to-green-600 text-white border-2 border-white/60 shadow-lg hover:opacity-90"
-                    onClick={async () => {
-                      if (isAnswered) return;
-                      try {
-                        if (!sessionId) throw new Error("No session");
-                        const res = await apiQuizSkip(sessionId) as { pointer: number; done: boolean }; // Ensure 'done' is included in the type
-                        const rawPointer = res.pointer ?? pointer + 1;
-                        const reachedEnd = res.done || questionOrder.length === 0 || rawPointer >= questionOrder.length;
-                        if (reachedEnd) {
-                          endGame();
-                          return;
-                        }
-                        const nextPointer = clampPointer(rawPointer, questionOrder.length);
-                        setPointer(nextPointer);
-                      } catch (e) {
-                        setQuestionOrder((q) => [...q, q[pointer]]);
-                        setPointer((p) => p + 1);
-                      }
-                      setTimeLeft(TIMER_DURATION);
-                      setSelectedAnswer(null);
-                      setIsAnswered(false);
-                      setIsCorrect(null);
-                      setHiddenOptions(new Set());
-                      setFreezeLeft(0);
-                      playSound("click");
-                    }}
-                  >
-                    <SkipForward className="w-5 h-5 md:w-6 md:h-6" />
-                    <span className="sr-only">Skip Question</span>
-                  </Button>
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-black/60 text-white text-[8px] md:text-[9px] px-1 py-0.5 md:px-1.5 border border-white/30">
-                      Free
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            </>
+              </>
             )}
           </>
         ) : (
@@ -407,15 +421,6 @@ const QuizGame = () => {
           </div>
         )}
       </div>
-      {/* Animations CSS for background entrance */}
-      <style>{`
-        @keyframes wordleBgIn {
-          0% { transform: scale(0.98); opacity: 0; }
-          60% { transform: scale(1.02); opacity: 1; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        .animate-wordle-bg { animation: wordleBgIn 0.9s cubic-bezier(.4,0,.2,1); }
-      `}</style>
     </div>
   );
 };

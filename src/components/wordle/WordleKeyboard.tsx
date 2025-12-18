@@ -24,7 +24,7 @@ const WordleKeyboard = ({ onKeyPress, letterStatus, disabled, targetWord, reveal
     if (revealedLettersArray.includes(key)) {
       return "bg-[#6aaa64] hover:bg-[#5a9a54] text-white border-green-300 shadow-md";
     }
-    
+
     if (searchClues.has(key)) {
       return "bg-cyan-500 hover:bg-cyan-400 text-white border-green-200 shadow-md";
     }
@@ -37,9 +37,9 @@ const WordleKeyboard = ({ onKeyPress, letterStatus, disabled, targetWord, reveal
   };
 
   return (
-    <div className="w-full px-1 space-y-1.5">
+    <div className="w-full px-0.5 space-y-1">
       {KEYBOARD_ROWS.map((row, rowIndex) => (
-        <div key={rowIndex} className="flex justify-center gap-1.5">
+        <div key={rowIndex} className="flex justify-center gap-1">
           {row.map((key) => {
             const isSpecial = key === "ENTER" || key === "⌫";
             return (
@@ -47,15 +47,15 @@ const WordleKeyboard = ({ onKeyPress, letterStatus, disabled, targetWord, reveal
                 key={key}
                 onClick={() => onKeyPress(key)}
                 disabled={disabled}
-                 className={`
-                  ${isSpecial ? "px-2.5 sm:px-3 md:px-5 flex-1 max-w-[72px] sm:max-w-[78px] md:max-w-[95px]" : "flex-1 max-w-[42px] sm:max-w-[48px] md:max-w-[60px] p-0"}
-                  h-12 sm:h-13 md:h-16 rounded-lg
-                  font-bold text-sm sm:text-base md:text-lg transition-all border-2
+                className={`
+                  ${isSpecial ? "px-0.5 sm:px-3 md:px-5 flex-[1.5] max-w-[72px] sm:max-w-[85px] md:max-w-[100px]" : "flex-1 max-w-[52px] sm:max-w-[55px] md:max-w-[65px] p-0"}
+                  h-12 sm:h-14 md:h-16 rounded-md
+                  font-bold text-[4vw] sm:text-base md:text-lg transition-all border-2
                   ${getKeyColor(key)}
                  `}
                 variant="outline"
               >
-                {key === "⌫" ? <Delete className="w-6 h-6 md:w-7 md:h-7" /> : key}
+                {key === "⌫" ? <Delete className="w-5 h-5 md:w-7 md:h-7" /> : key}
               </Button>
             );
           })}

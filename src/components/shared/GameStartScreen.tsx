@@ -196,9 +196,9 @@ const GameStartScreen = ({
           onClick={onStartGame}
           size="lg"
           disabled={startButtonDisabled}
-          className={`${buttonClasses} border-4 border-yellow-400 animate-pulse-wordle-btn`}
+          className={`${buttonClasses} border-4 border-yellow-400 animate-pulse-wordle-btn hover:animate-none rounded-full h-24 w-24 md:h-32 md:w-32 p-0 opacity-100 hover:opacity-100`}
         >
-          <span className="flex items-center justify-center">{buttonContent}</span>
+          <span className="flex items-center justify-center scale-150">{buttonContent}</span>
         </Button>
       </div>
 

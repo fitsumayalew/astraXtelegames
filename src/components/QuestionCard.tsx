@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Question } from "@/data/questions";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -23,71 +24,95 @@ const QuestionCard = ({
   isCorrect,
   hiddenOptions,
 }: QuestionCardProps) => {
+  const [displayedText, setDisplayedText] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+
+  // Reset and start typing when question changes
+  useEffect(() => {
+    if (!question) return;
+    setDisplayedText("");
+    setIsTyping(true);
+    let i = 0;
+    const fullText = question.question;
+    const speed = 25; // ms per char
+
+    const timer = setInterval(() => {
+      if (i < fullText.length) {
+        setDisplayedText((prev) => prev + fullText.charAt(i));
+        i++;
+      } else {
+        setIsTyping(false);
+        clearInterval(timer);
+      }
+    }, speed);
+
+    return () => clearInterval(timer);
+  }, [question]);
+
   if (!question) {
     return (
-      <Card className="w-full bg-card/95 backdrop-blur-sm rounded-2xl p-4 border-2 border-border/50">
-        <div className="text-center text-sm text-muted-foreground">Loading question…</div>
+      <Card className="w-full bg-[#fce5ba] shadow-[0_10px_0_rgba(0,0,0,1)] rounded-3xl p-6 border-4 border-black/10">
+        <div className="text-center text-lg font-bold text-amber-900 animate-pulse">Loading question...</div>
       </Card>
     );
   }
 
   return (
-    <Card className="w-full bg-card/95 backdrop-blur-sm shadow-[var(--shadow-card)] rounded-2xl p-3 sm:p-4 md:p-6 animate-bounce-in border-2 border-border/50">
-      <div className="mb-3 sm:mb-4">
-        <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <span className="text-[11px] sm:text-sm font-bold text-secondary bg-secondary/10 px-2.5 py-1.5 sm:px-3 rounded-full border border-secondary/20">
-            Question {currentQuestion + 1} of {totalQuestions}
-          </span>
-          <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-sm font-bold text-primary bg-gradient-to-r from-primary/10 to-primary/5 px-2.5 sm:px-3 py-1.5 rounded-full border border-primary/20">
-            <span>+{question.coins ?? 0}</span>
-            <span className="text-[10px] sm:text-xs">coins</span>
-          </div>
+    <Card className="w-full bg-[#fce5ba] shadow-[0_10px_0_rgba(0,0,0,1)] rounded-3xl pb-4 pt-8 px-4 relative overflow-visible border-none ring-4 ring-black/5 mt-8 flex flex-col h-full justify-between">
+
+      {/* Question Text (Inside Orange Box) */}
+      <div className="-mt-12 mx-auto bg-[#c87022] text-white py-3 px-4 rounded-xl shadow-lg border-b-4 border-black/20 w-fit min-w-[60%] max-w-[95%] text-center mb-4 z-20 relative">
+        <div className="min-h-[3rem] flex items-center justify-center">
+          <h2 className="text-base sm:text-lg font-normal leading-snug">
+            {displayedText}
+            {isTyping && <span className="animate-pulse">|</span>}
+          </h2>
         </div>
-        <h2 className="text-sm sm:text-base md:text-xl lg:text-2xl font-bold text-foreground leading-relaxed">
-          {question.question}
-        </h2>
+        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-[#c87022] rotate-45 border-r-4 border-b-4 border-black/20 z-10"></div>
       </div>
 
-      <div className="grid grid-cols-1 gap-2 sm:gap-3 md:gap-4">
-        {question.options.map((option, index) => {
-          const isSelected = selectedAnswer === index;
-          const isWrongAnswer = isSelected && isCorrect === false;
-          const isRightAnswer = isSelected && isCorrect === true;
-          const isHidden = hiddenOptions?.has(index);
-          
-          return (
-            <Button
-              key={index}
-              onClick={() => onSelectAnswer(index)}
-              disabled={disabled || !!isHidden}
-              variant="outline"
-              className={`h-auto py-2.5 px-3 sm:py-3.5 sm:px-4 md:py-5 md:px-6 text-left justify-start font-medium text-[13px] sm:text-base md:text-lg transition-all duration-300 border-2 ${
-                isRightAnswer
-                  ? "bg-primary/10 text-primary border-primary shadow-[0_0_20px_rgba(148,205,87,0.3)] scale-[1.02]"
-                  : isWrongAnswer
-                  ? "bg-destructive/10 text-destructive border-destructive animate-shake"
-                  : isHidden
-                  ? "bg-muted text-muted-foreground border-border opacity-60"
-                  : "bg-card border-secondary/20"
-              }`}
-            >
-              <span className="flex items-center gap-2.5 sm:gap-4 w-full">
-                <span className={`flex items-center justify-center w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full font-bold text-[11px] sm:text-sm md:text-base flex-shrink-0 transition-all ${
-                  isRightAnswer 
-                    ? "bg-primary text-primary-foreground" 
-                    : isWrongAnswer 
-                    ? "bg-destructive text-destructive-foreground"
-                    : isHidden
-                    ? "bg-muted text-muted-foreground"
-                    : "bg-secondary/10 text-secondary"
-                }`}>
-                  {String.fromCharCode(65 + index)}
-                </span>
-                <span className="flex-1 text-[13px] sm:text-base">{option}</span>
-              </span>
-            </Button>
-          );
-        })}
+      <div className="flex-1 flex flex-col justify-center w-full">
+        <div className="grid grid-cols-1 gap-2 ring-offset-2 w-full">
+          {question.options.map((option, index) => {
+            const isSelected = selectedAnswer === index;
+            const isWrongAnswer = isSelected && isCorrect === false;
+            const isRightAnswer = isSelected && isCorrect === true; // or if correct answer revealed
+            const isHidden = hiddenOptions?.has(index);
+
+            let btnColorClass = "bg-[#2241d5] border-[#152a8a] text-white hover:bg-[#3355ff] hover:mt-[-2px] hover:pb-[calc(0.5rem+2px)] hover:shadow-[0_4px_0_#152a8a]"; // Default Blue
+
+            if (isRightAnswer) {
+              btnColorClass = "bg-[#4caf50] border-[#2e7d32] text-white shadow-[0_3px_0_#2e7d32]"; // Green
+            } else if (isWrongAnswer) {
+              btnColorClass = "bg-[#f44336] border-[#c62828] text-white shadow-[0_3px_0_#c62828] animate-shake"; // Red
+            } else if (isHidden) {
+              btnColorClass = "bg-gray-400 border-gray-600 text-gray-200 opacity-50 cursor-not-allowed shadow-[0_2px_0_#555]";
+            } else if (disabled) {
+              btnColorClass = "bg-gray-300 border-gray-400 text-gray-500 opacity-80 cursor-default";
+            }
+
+            return (
+              <Button
+                key={index}
+                onClick={() => onSelectAnswer(index)}
+                disabled={disabled || !!isHidden}
+                className={`h-auto w-full py-2 px-3 sm:py-3 sm:px-4 
+                  border-b-4 rounded-full text-left justify-start relative
+                  transition-all duration-100 ease-in-out text-sm sm:text-base mb-1
+                  ${btnColorClass}
+                  ${!isSelected && !disabled && !isHidden ? "shadow-[0_3px_0_#152a8a] active:shadow-none active:translate-y-[3px] active:border-b-0" : ""}
+                `}
+              >
+                <div className="flex items-center gap-3 w-full">
+                  <span className={`flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full font-bold text-xs sm:text-sm flex-shrink-0 bg-white/20`}>
+                    {String.fromCharCode(65 + index)}
+                  </span>
+                  <span className="flex-1 font-medium tracking-wide">{option}</span>
+                </div>
+              </Button>
+            );
+          })}
+        </div>
       </div>
     </Card>
   );
