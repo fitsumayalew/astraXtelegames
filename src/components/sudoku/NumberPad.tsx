@@ -15,8 +15,7 @@ const NumberPad = ({ onNumberClick, disabled }: NumberPadProps) => {
           onClick={() => onNumberClick(num)}
           disabled={disabled}
           size="sm"
-          className="w-10 h-10 md:w-14 md:h-14 text-base md:text-xl font-bold rounded-full"
-          variant="default"
+          className="w-10 h-10 md:w-14 md:h-14 text-base md:text-xl font-bold rounded-full bg-[#8963cd] hover:bg-[#7f57c8] text-white border border-white/25 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {num}
         </Button>
@@ -25,8 +24,7 @@ const NumberPad = ({ onNumberClick, disabled }: NumberPadProps) => {
         onClick={() => onNumberClick(null)}
         disabled={disabled}
         size="sm"
-        className="w-10 h-10 md:w-14 md:h-14 rounded-full"
-        variant="outline"
+        className="w-10 h-10 md:w-14 md:h-14 rounded-full bg-[#fa778c] hover:bg-[#f9627a] text-white border border-white/30 disabled:opacity-60 disabled:cursor-not-allowed"
       >
         <Eraser className="w-5 h-5 md:w-6 md:h-6" />
       </Button>

@@ -66,7 +66,7 @@ const Sudoku = () => {
   const [showNewGameConfirm, setShowNewGameConfirm] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [freeHintsLeft, setFreeHintsLeft] = useState(FREE_HINTS);
-  const [howToPlayOpen, setHowToPlayOpen] = useState(false);
+  const [howToPlayOpen, setHowToPlayOpen] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(() => (typeof window !== "undefined" ? localStorage.getItem("sudokuSound") !== "off" : true));
 
   // Timer
@@ -96,7 +96,7 @@ const Sudoku = () => {
     if (!soundEnabled) return;
     const audio = new Audio(SOUND_URLS[sound]);
     audio.volume = SOUND_VOLUMES[sound] ?? 0.4;
-    audio.play().catch(() => {});
+    audio.play().catch(() => { });
   }, [soundEnabled]);
 
   const toggleSound = () => setSoundEnabled((prev) => !prev);
@@ -218,7 +218,7 @@ const Sudoku = () => {
   const handleGameOver = (isWin: boolean) => {
     setGameOver(true);
     setWon(isWin);
-    
+
     if (difficulty) {
       setElapsedTime(DIFFICULTY_CONFIG[difficulty].time - timeLeft);
     }
@@ -297,18 +297,29 @@ const Sudoku = () => {
   ];
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-slate-950 text-white">
-      {(gameStarted && !gameOver) && (
-        <div
-          className="absolute inset-0 z-0 bg-center bg-cover pointer-events-none animate-wordle-bg"
-          style={{ backgroundImage: 'url(/image/sodoku-g-bg.png)', opacity: 0.9 }}
-        ></div>
+    <div className="min-h-screen relative overflow-hidden bg-[#4a3264] text-white">
+      {/* Backgrounds */}
+      {(!gameStarted && !gameOver) && (
+        <>
+          <div
+            className="absolute inset-0 z-0 bg-center bg-cover pointer-events-none"
+            style={{ backgroundImage: 'url(/images/sudoku/bghash-sheet0.png)', backgroundRepeat: 'no-repeat', backgroundSize: 'cover' }}
+          />
+          <div
+            className="absolute inset-0 z-0 bg-center bg-cover pointer-events-none"
+            style={{ backgroundImage: 'url(/images/sudoku/bgsquares-sheet0.png)', backgroundRepeat: 'no-repeat', backgroundSize: 'cover' }}
+          />
+        </>
       )}
-      {gameOver && (
+      {(gameStarted || gameOver) && (
         <div
-          className="absolute inset-0 z-0 bg-center bg-cover pointer-events-none animate-wordle-bg"
-          style={{ backgroundImage: 'url(/image/sodoku-g-bg.png)', opacity: 0.9 }}
-        ></div>
+          className="absolute inset-0 z-0 pointer-events-none"
+          style={{
+            backgroundImage: 'url(/images/sudoku/mainbg0-sheet0.png)',
+            backgroundRepeat: 'repeat',
+            backgroundPosition: 'center'
+          }}
+        />
       )}
 
       <GameHeader coins={totalCoins} onNewGame={handleNewGame} gameStarted={gameStarted} />
@@ -320,11 +331,11 @@ const Sudoku = () => {
             description="Fill the 9×9 grid with logic and strategy"
             icon={Grid3x3}
             hideHero
-            backgroundImage="/image/sudoku.png"
-            backgroundOpacity={0.92}
-            fullScreenBackground
+            backgroundImage=""
+            backgroundOpacity={0}
+            fullScreenBackground={false}
             compactHeight
-            showBackgroundAlways
+            showBackgroundAlways={false}
             instructions={[]}
             onStartGame={handleStartGame}
             startButtonDisabled={!selectedDifficulty}
@@ -359,11 +370,10 @@ const Sudoku = () => {
                     return (
                       <button
                         key={diff}
-                        className={`group p-3 rounded-2xl border-2 transition-all text-left shadow-md backdrop-blur ${
-                          isSelected
-                            ? "border-yellow-300 bg-white/20 scale-105 shadow-yellow-500/30"
-                            : "border-white/40 bg-white/10 hover:border-yellow-200 hover:scale-102"
-                        }`}
+                        className={`group p-3 rounded-2xl border-2 transition-all text-left shadow-md backdrop-blur ${isSelected
+                          ? "border-yellow-300 bg-white/20 scale-105 shadow-yellow-500/30"
+                          : "border-white/40 bg-white/10 hover:border-yellow-200 hover:scale-102"
+                          }`}
                         onClick={() => setSelectedDifficulty(diff)}
                       >
                         <div className="flex items-center justify-between gap-2">
@@ -393,7 +403,7 @@ const Sudoku = () => {
                   <Button
                     onClick={handleHint}
                     size="icon"
-                    className="relative rounded-full w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-amber-300 via-orange-400 to-amber-500 text-black font-extrabold border-2 border-white/70 shadow-lg hover:opacity-90"
+                    className="relative rounded-full w-12 h-12 md:w-14 md:h-14 bg-[#8963cd] hover:bg-[#7f57c8] text-white font-extrabold border-2 border-white/40 shadow-lg hover:shadow-purple-500/30"
                     aria-label="Use hint"
                   >
                     <Lightbulb className="w-5 h-5 md:w-6 md:h-6" />
@@ -404,7 +414,7 @@ const Sudoku = () => {
                   <Button
                     onClick={handleCheckSolution}
                     size="icon"
-                    className="rounded-full w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-green-500 to-green-600 text-white font-bold border-2 border-white/70 shadow-lg hover:opacity-90"
+                    className="rounded-full w-12 h-12 md:w-14 md:h-14 bg-[#8d4e8f] hover:bg-[#7f437f] text-white font-bold border-2 border-white/40 shadow-lg hover:shadow-purple-500/30"
                     aria-label="Check solution"
                   >
                     <CheckCircle className="w-5 h-5 md:w-6 md:h-6" />
@@ -412,20 +422,20 @@ const Sudoku = () => {
                 </div>
               </div>
 
-              <div className="rounded-3xl bg-white/80 text-slate-900 shadow-2xl p-3 md:p-6 border border-white/60">
+              <div className="rounded-3xl bg-[#8d4e8f] text-white shadow-2xl p-3 md:p-6 border border-[#8d4e8f]">
                 <div className="flex justify-center">
-                <SudokuGrid
-                  grid={currentGrid}
-                  fixedCells={fixedCells}
-                  hintCells={hintCells}
-                  selectedCell={selectedCell}
-                  invalidCells={invalidCells}
-                  onCellClick={handleCellClick}
-                />
+                  <SudokuGrid
+                    grid={currentGrid}
+                    fixedCells={fixedCells}
+                    hintCells={hintCells}
+                    selectedCell={selectedCell}
+                    invalidCells={invalidCells}
+                    onCellClick={handleCellClick}
+                  />
                 </div>
               </div>
 
-              <div className="rounded-3xl bg-white/70 text-slate-900 shadow-xl p-2 md:p-4 border border-white/60">
+              <div className="rounded-3xl bg-transparent text-white shadow-xl p-2 md:p-4 border border-[#8d4e8f] backdrop-blur-sm">
                 <NumberPad onNumberClick={handleNumberClick} disabled={false} />
               </div>
             </div>
@@ -449,7 +459,7 @@ const Sudoku = () => {
 
         {/* How to play dialog */}
         <Dialog open={howToPlayOpen} onOpenChange={setHowToPlayOpen}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="w-[calc(100vw-2rem)] sm:w-full sm:max-w-md px-4">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2"><Grid3x3 className="w-5 h-5" /> How to play Sudoku</DialogTitle>
               <DialogDescription>

@@ -107,7 +107,7 @@ const WordleGame = () => {
   const [searchClues, setSearchClues] = useState<Set<string>>(new Set());
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem("wordleSound") !== "off");
   const [coinBursts, setCoinBursts] = useState<CoinBurst[]>([]);
-  const [rulesOpen, setRulesOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(true);
   const [hintInFlight, setHintInFlight] = useState(false);
   const [searchInFlight, setSearchInFlight] = useState(false);
   const timeoutHandledRef = useRef(false);
@@ -673,7 +673,7 @@ const WordleGame = () => {
       </div>
 
       <Dialog open={rulesOpen} onOpenChange={setRulesOpen}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto bg-yellow-50/80 border-yellow-300">
+        <DialogContent className="w-[calc(100vw-2rem)] sm:w-full sm:max-w-lg max-h-[85vh] overflow-y-auto bg-yellow-50/80 border-yellow-300 px-4">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <HelpCircle className="h-5 w-5 text-primary" />

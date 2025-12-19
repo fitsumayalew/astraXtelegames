@@ -42,21 +42,33 @@ const SudokuGrid = ({
 
     // Background colors
     if (isInvalid) {
-      classes += "bg-destructive/20 text-destructive ";
-    } else if (isHint) {
-      classes += "bg-accent/40 text-accent-foreground ";
-    } else if (isSelected) {
-      classes += "bg-primary/30 text-foreground ";
-    } else if (isFixed) {
-      classes += "bg-secondary/30 text-foreground ";
-    } else if (isSameRow || isSameCol || isSameBox) {
-      classes += "bg-primary/10 text-foreground ";
+      // Keep invalid styling distinct (red-ish) but maybe ensure it works with new scheme. 
+      // User didn't specify invalid, so I'll keep it red but ensure text is readable.
+      classes += "bg-red-500 text-white ";
+    } else if (isHint || isFixed) {
+      // Autofilled/Fixed -> #59c2f9
+      classes += "bg-[#59c2f9] text-white ";
+    } else if (grid[row][col] !== null) {
+      // User filled (has value, not fixed/hint) -> #fcc523
+      classes += "bg-[#fcc523] text-white ";
     } else {
-      classes += "bg-card text-foreground hover:bg-primary/5 ";
+      // Unfilled/Empty -> #382b57
+      classes += "bg-[#382b57] text-white ";
     }
 
-    // Borders - thicker for 3x3 boxes
-    classes += "border-border ";
+    // Highlight selected cell
+    if (isSelected) {
+      classes += "brightness-125 ring-2 ring-white z-10 ";
+    } else if (isSameRow || isSameCol || isSameBox) {
+      classes += "brightness-110 ";
+    } else {
+      classes += "hover:brightness-110 ";
+    }
+
+    // Borders - #8d4e8f
+    classes += "border-[#8d4e8f] ";
+
+    // Thicker borders for 3x3 box boundaries
     if (row % 3 === 0) classes += "border-t-2 ";
     else classes += "border-t ";
     if (col % 3 === 0) classes += "border-l-2 ";
@@ -68,7 +80,7 @@ const SudokuGrid = ({
   };
 
   return (
-    <div className="inline-block bg-border p-0.5 rounded-lg">
+    <div className="inline-block bg-[#8d4e8f] p-0.5 rounded-lg">
       <div className="grid grid-cols-9 gap-0">
         {grid.map((row, rowIndex) =>
           row.map((cell, colIndex) => (

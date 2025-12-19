@@ -36,6 +36,11 @@ const QuestionCard = ({
     const fullText = question.question;
     const speed = 25; // ms per char
 
+    // Play typing sound when question starts revealing
+    const audio = new Audio('/media/quiz/typing.webm');
+    audio.volume = 0.3;
+    audio.play().catch(() => { });
+
     const timer = setInterval(() => {
       if (i < fullText.length) {
         setDisplayedText((prev) => prev + fullText.charAt(i));
@@ -58,10 +63,10 @@ const QuestionCard = ({
   }
 
   return (
-    <Card className="w-full bg-[#fce5ba] shadow-[0_10px_0_rgba(0,0,0,1)] rounded-3xl pb-4 pt-8 px-4 relative overflow-visible border-none ring-4 ring-black/5 mt-8 flex flex-col h-full justify-between">
+    <Card className="w-full bg-[#fce5ba] shadow-[0_10px_0_rgba(0,0,0,1)] rounded-3xl pb-4 pt-4 px-4 relative border-none ring-4 ring-black/5 flex flex-col h-full justify-between">
 
       {/* Question Text (Inside Orange Box) */}
-      <div className="-mt-12 mx-auto bg-[#c87022] text-white py-3 px-4 rounded-xl shadow-lg border-b-4 border-black/20 w-fit min-w-[60%] max-w-[95%] text-center mb-4 z-20 relative">
+      <div className="mt-[10px] mx-auto bg-[#c87022] text-white py-3 px-4 rounded-2xl border-b-4 border-black/20 w-[95%] text-center mb-4 z-20 relative">
         <div className="min-h-[3rem] flex items-center justify-center">
           <h2 className="text-base sm:text-lg font-normal leading-snug">
             {displayedText}
@@ -76,7 +81,7 @@ const QuestionCard = ({
           {question.options.map((option, index) => {
             const isSelected = selectedAnswer === index;
             const isWrongAnswer = isSelected && isCorrect === false;
-            const isRightAnswer = isSelected && isCorrect === true; // or if correct answer revealed
+            const isRightAnswer = isSelected && isCorrect === true;
             const isHidden = hiddenOptions?.has(index);
 
             let btnColorClass = "bg-[#2241d5] border-[#152a8a] text-white hover:bg-[#3355ff] hover:mt-[-2px] hover:pb-[calc(0.5rem+2px)] hover:shadow-[0_4px_0_#152a8a]"; // Default Blue
@@ -87,8 +92,6 @@ const QuestionCard = ({
               btnColorClass = "bg-[#f44336] border-[#c62828] text-white shadow-[0_3px_0_#c62828] animate-shake"; // Red
             } else if (isHidden) {
               btnColorClass = "bg-gray-400 border-gray-600 text-gray-200 opacity-50 cursor-not-allowed shadow-[0_2px_0_#555]";
-            } else if (disabled) {
-              btnColorClass = "bg-gray-300 border-gray-400 text-gray-500 opacity-80 cursor-default";
             }
 
             return (
@@ -99,8 +102,10 @@ const QuestionCard = ({
                 className={`h-auto w-full py-2 px-3 sm:py-3 sm:px-4 
                   border-b-4 rounded-full text-left justify-start relative
                   transition-all duration-100 ease-in-out text-sm sm:text-base mb-1
+                  disabled:opacity-100 disabled:pointer-events-none
                   ${btnColorClass}
                   ${!isSelected && !disabled && !isHidden ? "shadow-[0_3px_0_#152a8a] active:shadow-none active:translate-y-[3px] active:border-b-0" : ""}
+                  ${isSelected ? "" : "shadow-[0_3px_0_#152a8a]"}
                 `}
               >
                 <div className="flex items-center gap-3 w-full">

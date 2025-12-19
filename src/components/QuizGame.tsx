@@ -47,24 +47,16 @@ const QuizGame = () => {
     click: getMediaUrl("click.webm"),
     wrong: getMediaUrl("wrong answer.webm"),
     win: getMediaUrl("right answer.webm"),
-    lose: getMediaUrl("wrong answer.webm"), // Using 'wrong answer' for lose or 'bar complete' or 'timesUp'? User said "use appropriate places". "timesUp" for timeout? "wrong answer" for life loss?
-    // Let's use:
-    // click -> click.webm
-    // wrong -> wrong answer.webm
-    // win -> right answer.webm
-    // lose (game over) -> timesUp.webm or coins.webm? Maybe "bar complete.webm" for finish? 
-    // "lose" in code is used for life loss or game over. 
-    // Let's use 'wrong answer.webm' for life loss, and maybe 'timesUp.webm' for timeout/game over?
-    // The code calls playSound("lose") on timeout or game over. Let's map "lose" to "timesUp.webm".
-    start: getMediaUrl("woosh.webm"),
+    timesUp: getMediaUrl("timesUp.webm"),
+    newQuestion: getMediaUrl("quiz_popup.webm"),
   } as const;
   type SoundKey = keyof typeof SOUND_URLS;
   const SOUND_VOLUMES: Record<SoundKey, number> = {
     click: 0.5,
     wrong: 0.6,
     win: 0.6,
-    lose: 0.6,
-    start: 0.5,
+    timesUp: 0.6,
+    newQuestion: 0.5,
   };
 
   const playSound = useCallback((sound: SoundKey) => {
@@ -119,10 +111,10 @@ const QuizGame = () => {
     setLives(newLives);
 
     if (newLives <= 0) {
-      playSound("lose");
+      playSound("timesUp");
       endGame();
     } else {
-      playSound("lose");
+      playSound("timesUp");
       moveToNextQuestion();
     }
   };
@@ -147,7 +139,7 @@ const QuizGame = () => {
         setLastLostLife(lives - 1);
         setLives(newLives);
         if (newLives <= 0 || res.done) {
-          playSound("lose");
+          playSound("timesUp");
           setTimeout(() => endGame(), 800);
           return;
         }
@@ -169,6 +161,7 @@ const QuizGame = () => {
         setIsCorrect(null);
         setHiddenOptions(new Set());
         setFreezeLeft(0);
+        playSound("newQuestion"); // Play sound when new question starts
       }, 800);
     } catch (e) {
       // Fallback if server fails
@@ -216,6 +209,7 @@ const QuizGame = () => {
       setIsCorrect(null);
       setHiddenOptions(new Set());
       setFreezeLeft(0);
+      playSound("newQuestion"); // Play sound when new question starts
     } else {
       endGame();
     }
@@ -241,20 +235,14 @@ const QuizGame = () => {
       setBackendQuestions(mapped);
       setQuestionOrder(Array.from({ length: mapped.length }, (_, i) => i));
       setPointer(clampPointer((session as any).pointer ?? 0, mapped.length));
-      playSound("start");
+      playSound("newQuestion"); // Play sound when game starts with first question
       setGameStarted(true);
     } catch (e: any) {
       toast({ title: "Unable to start quiz", description: e?.message ?? "Server error", variant: "destructive" });
     }
   };
 
-  // Auto-start game on mount
-  useEffect(() => {
-    if (!gameStarted && !sessionId) {
-      startGame();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-b from-[#2241d5] to-[#2241d5] md:to-[#0a1a44]">
@@ -274,7 +262,9 @@ const QuizGame = () => {
       )}
 
       <div className="max-w-3xl mx-auto relative z-10 px-2 py-2 md:px-4 md:py-5 space-y-3 md:space-y-5">
-        {!showResults ? (
+        {!gameStarted ? (
+          <StartScreen onStartGame={startGame} />
+        ) : !showResults ? (
           <>
             {backendQuestions.length === 0 ? (
               <div className="flex items-center justify-center py-10">
