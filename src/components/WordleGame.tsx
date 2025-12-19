@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import TypewriterText from "./shared/TypewriterText";
 import { Badge } from "@/components/ui/badge";
 import confetti from "canvas-confetti";
 import {
@@ -556,8 +557,9 @@ const WordleGame = () => {
           gameStarted={gameStarted && !showGameOver}
           coinAnchorRef={coinAnchorRef}
           onNewGame={handleNewGame}
-          showCoins={false}
+          showCoins={true}
           showTimer={false}
+          variant="wordle"
         />
       ) : null}
 
@@ -674,15 +676,21 @@ const WordleGame = () => {
 
       <Dialog open={rulesOpen} onOpenChange={setRulesOpen}>
         <DialogContent className="w-[calc(100vw-2rem)] sm:w-full sm:max-w-lg max-h-[85vh] overflow-y-auto bg-yellow-50/80 border-yellow-300 px-4">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <HelpCircle className="h-5 w-5 text-primary" />
-              How to play Wordle
-            </DialogTitle>
-            <DialogDescription>
-              Guess the 5-letter word in six tries. Colors show how close you are. Use Search to reveal a letter that is in the word, and Hint to lock a letter into its correct position.
-            </DialogDescription>
-          </DialogHeader>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <HelpCircle className="h-5 w-5 text-primary" />
+                <span>
+                  <TypewriterText text="How to play Wordle" speed={15} soundSrc="/media/quiz/typing.webm" />
+                </span>
+              </DialogTitle>
+              <DialogDescription>
+                <TypewriterText
+                  text="Guess the 5-letter word in six tries. Colors show how close you are. Use Search to reveal a letter that is in the word, and Hint to lock a letter into its correct position."
+                  speed={15}
+                  soundSrc="/media/quiz/typing.webm"
+                />
+              </DialogDescription>
+            </DialogHeader>
           <div className="space-y-3 text-sm text-foreground/80">
             {wordleInstructions.map((item, idx) => (
               <div
@@ -693,8 +701,16 @@ const WordleGame = () => {
                   <item.icon className="w-5 h-5 text-yellow-900" />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="font-semibold text-yellow-900 text-sm">{item.title}</h4>
-                  <div className="text-sm text-yellow-800 leading-relaxed">{item.description}</div>
+                  <h4 className="font-semibold text-yellow-900 text-sm">
+                    <TypewriterText text={item.title} speed={15} soundSrc="/media/quiz/typing.webm" />
+                  </h4>
+                  <div className="text-sm text-yellow-800 leading-relaxed">
+                    {typeof item.description === "string" ? (
+                      <TypewriterText text={item.description} speed={18} soundSrc="/media/quiz/typing.webm" />
+                    ) : (
+                      item.description as any
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

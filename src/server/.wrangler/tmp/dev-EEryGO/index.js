@@ -1,212 +1,835 @@
-import { Storage } from "@cloudflare/actors/storage";
+var __defProp = Object.defineProperty;
+var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-export interface Env {
-  USER_STATE: DurableObjectNamespace;
+// .wrangler/tmp/bundle-0oruRV/checked-fetch.js
+var urls = /* @__PURE__ */ new Set();
+function checkURL(request, init) {
+  const url = request instanceof URL ? request : new URL(
+    (typeof request === "string" ? new Request(request, init) : request).url
+  );
+  if (url.port && url.port !== "443" && url.protocol === "https:") {
+    if (!urls.has(url.toString())) {
+      urls.add(url.toString());
+      console.warn(
+        `WARNING: known issue with \`fetch()\` requests to custom HTTPS ports in published Workers:
+ - ${url.toString()} - the custom port will be ignored when the Worker is published using the \`wrangler deploy\` command.
+`
+      );
+    }
+  }
 }
+__name(checkURL, "checkURL");
+globalThis.fetch = new Proxy(globalThis.fetch, {
+  apply(target, thisArg, argArray) {
+    const [request, init] = argArray;
+    checkURL(request, init);
+    return Reflect.apply(target, thisArg, argArray);
+  }
+});
 
-type WordleStats = {
-  attempts?: number;
-  lastWord?: string;
+// node_modules/@cloudflare/actors/dist/storage/src/sql-schema-migrations.js
+var __classPrivateFieldSet = function(receiver, state, value, kind, f) {
+  if (kind === "m") throw new TypeError("Private method is not writable");
+  if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
+  if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot write private member to an object whose class did not declare it");
+  return kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value), value;
+};
+var __classPrivateFieldGet = function(receiver, state, kind, f) {
+  if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
+  if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
+  return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
+};
+var _SQLSchemaMigrations_instances;
+var _SQLSchemaMigrations__config;
+var _SQLSchemaMigrations__migrations;
+var _SQLSchemaMigrations__lastMigrationMonotonicId;
+var _SQLSchemaMigrations__lastMigrationIDKeyName;
+var SQLSchemaMigrations = class {
+  static {
+    __name(this, "SQLSchemaMigrations");
+  }
+  constructor(config) {
+    _SQLSchemaMigrations_instances.add(this);
+    _SQLSchemaMigrations__config.set(this, void 0);
+    _SQLSchemaMigrations__migrations.set(this, void 0);
+    _SQLSchemaMigrations__lastMigrationMonotonicId.set(this, -1);
+    __classPrivateFieldSet(this, _SQLSchemaMigrations__config, config, "f");
+    const migrations = [...config.migrations];
+    migrations.sort((a, b) => a.idMonotonicInc - b.idMonotonicInc);
+    const idSeen = /* @__PURE__ */ new Set();
+    migrations.forEach((m) => {
+      if (m.idMonotonicInc < 0) {
+        throw new Error(`migration ID cannot be negative: ${m.idMonotonicInc}`);
+      }
+      if (idSeen.has(m.idMonotonicInc)) {
+        throw new Error(`duplicate migration ID detected: ${m.idMonotonicInc}`);
+      }
+      idSeen.add(m.idMonotonicInc);
+    });
+    __classPrivateFieldSet(this, _SQLSchemaMigrations__migrations, migrations, "f");
+  }
+  /**
+   * This is a quick check based on the in memory tracker of last migration ran,
+   * therefore this always returns `true` until `runAll` runs at least once.
+   * @returns `true` if the `migrations` list provided has not been ran in full yet.
+   */
+  hasMigrationsToRun() {
+    if (!__classPrivateFieldGet(this, _SQLSchemaMigrations__migrations, "f").length) {
+      return false;
+    }
+    return __classPrivateFieldGet(this, _SQLSchemaMigrations__lastMigrationMonotonicId, "f") !== __classPrivateFieldGet(this, _SQLSchemaMigrations__migrations, "f")[__classPrivateFieldGet(this, _SQLSchemaMigrations__migrations, "f").length - 1].idMonotonicInc;
+  }
+  /**
+   * Runs all the migrations that haven't already ran. The `idMonotonicInc` of each migration is used
+   * to track which migrations ran or not. New migrations should always have higher `idMonotonicInc`
+   * than older ones!
+   *
+   * @param sqlGen An optional callback function to generate the SQL statement of a given migration at runtime.
+   *               If the migration entry already has a valid `sql` statement this callback is NOT called.
+   * @returns The numbers of rows read and written throughout the migration execution.
+   */
+  async runAll(sqlGen) {
+    const result = {
+      rowsRead: 0,
+      rowsWritten: 0
+    };
+    if (!this.hasMigrationsToRun()) {
+      return result;
+    }
+    __classPrivateFieldSet(this, _SQLSchemaMigrations__lastMigrationMonotonicId, await __classPrivateFieldGet(this, _SQLSchemaMigrations__config, "f").doStorage.get(__classPrivateFieldGet(this, _SQLSchemaMigrations_instances, "m", _SQLSchemaMigrations__lastMigrationIDKeyName).call(this)) ?? -1, "f");
+    let idx = 0, sz = __classPrivateFieldGet(this, _SQLSchemaMigrations__migrations, "f").length;
+    while (idx < sz && __classPrivateFieldGet(this, _SQLSchemaMigrations__migrations, "f")[idx].idMonotonicInc <= __classPrivateFieldGet(this, _SQLSchemaMigrations__lastMigrationMonotonicId, "f")) {
+      idx += 1;
+    }
+    if (idx >= sz) {
+      return result;
+    }
+    const doSql = __classPrivateFieldGet(this, _SQLSchemaMigrations__config, "f").doStorage.sql;
+    const migrationsToRun = __classPrivateFieldGet(this, _SQLSchemaMigrations__migrations, "f").slice(idx);
+    await __classPrivateFieldGet(this, _SQLSchemaMigrations__config, "f").doStorage.transaction(async () => {
+      let _lastMigrationMonotonicId = __classPrivateFieldGet(this, _SQLSchemaMigrations__lastMigrationMonotonicId, "f");
+      migrationsToRun.forEach((migration) => {
+        let query = migration.sql ?? sqlGen?.(migration.idMonotonicInc);
+        if (!query) {
+          throw new Error(`migration with neither 'sql' nor 'sqlGen' provided: ${migration.idMonotonicInc}`);
+        }
+        const cursor = doSql.exec(query);
+        let _ = cursor.toArray();
+        result.rowsRead += cursor.rowsRead;
+        result.rowsWritten += cursor.rowsWritten;
+        _lastMigrationMonotonicId = migration.idMonotonicInc;
+      });
+      __classPrivateFieldSet(this, _SQLSchemaMigrations__lastMigrationMonotonicId, _lastMigrationMonotonicId, "f");
+      await __classPrivateFieldGet(this, _SQLSchemaMigrations__config, "f").doStorage.put(__classPrivateFieldGet(this, _SQLSchemaMigrations_instances, "m", _SQLSchemaMigrations__lastMigrationIDKeyName).call(this), __classPrivateFieldGet(this, _SQLSchemaMigrations__lastMigrationMonotonicId, "f"));
+    });
+    return result;
+  }
+};
+_SQLSchemaMigrations__config = /* @__PURE__ */ new WeakMap(), _SQLSchemaMigrations__migrations = /* @__PURE__ */ new WeakMap(), _SQLSchemaMigrations__lastMigrationMonotonicId = /* @__PURE__ */ new WeakMap(), _SQLSchemaMigrations_instances = /* @__PURE__ */ new WeakSet(), _SQLSchemaMigrations__lastMigrationIDKeyName = /* @__PURE__ */ __name(function _SQLSchemaMigrations__lastMigrationIDKeyName2() {
+  return "__sql_migrations_lastID";
+}, "_SQLSchemaMigrations__lastMigrationIDKeyName");
+
+// node_modules/@cloudflare/actors/dist/storage/src/index.js
+var Storage = class {
+  static {
+    __name(this, "Storage");
+  }
+  /**
+   * Gets the current migrations array
+   */
+  get migrations() {
+    return this._migrationsArray;
+  }
+  /**
+   * Sets the migrations array and updates the SQLSchemaMigrations instance if available
+   */
+  set migrations(value) {
+    this._migrationsArray = value;
+    if (this.raw && this._migrations) {
+      this._migrations = new SQLSchemaMigrations({
+        doStorage: this.raw,
+        migrations: value
+      });
+    }
+  }
+  /**
+   * Creates a new instance of Storage.
+   * @param sql - The SQL storage instance to use for queries
+   * @param storage - The Durable Object storage instance
+   */
+  constructor(storage) {
+    this._migrationsArray = [];
+    this.hasRanMigrations = false;
+    this.raw = storage;
+    this.sqlStorage = storage?.sql;
+    if (storage) {
+      this._migrations = new SQLSchemaMigrations({
+        doStorage: storage,
+        migrations: this._migrationsArray
+      });
+    }
+  }
+  /**
+   * Executes a raw SQL query with optional parameters.
+   * @param opts - Options containing the SQL query and optional parameters
+   * @returns Promise resolving to a cursor containing the query results
+   * @throws Error if the SQL execution fails
+   */
+  async executeRawQuery(opts) {
+    const { sql, params } = opts;
+    try {
+      let cursor;
+      if (params && params.length) {
+        cursor = this.sqlStorage?.exec(sql, ...params);
+      } else {
+        cursor = this.sqlStorage?.exec(sql);
+      }
+      if (!cursor) {
+        console.log("No cursor returned from query");
+        return null;
+      }
+      return cursor;
+    } catch (error) {
+      console.error("SQL Execution Error:", error);
+      throw error;
+    }
+  }
+  /**
+   * Execute SQL queries against the Agent's database
+   * @template T Type of the returned rows
+   * @param strings SQL query template strings
+   * @param values Values to be inserted into the query
+   * @returns Array of query results
+   */
+  sql(strings, ...values) {
+    let query = "";
+    try {
+      query = strings.reduce((acc, str, i) => acc + str + (i < values.length ? "?" : ""), "");
+      if (!this.sqlStorage) {
+        throw new Error("No SQL storage provided");
+      }
+      return [...this.sqlStorage.exec(query, ...values)];
+    } catch (e) {
+      console.error(`failed to execute sql query: ${query}`, e);
+      throw e;
+    }
+  }
+  /**
+   * Executes a SQL query and formats the results based on the specified options.
+   * @param opts - Options containing the SQL query, parameters, and result format preference
+   * @returns Promise resolving to either raw query results or formatted array
+   */
+  async query(sql, params, isRaw) {
+    const cursor = await this.executeRawQuery({ sql, params });
+    if (!cursor)
+      return [];
+    if (isRaw) {
+      return {
+        columns: cursor.columnNames,
+        rows: Array.from(cursor.raw()),
+        meta: {
+          rows_read: cursor.rowsRead,
+          rows_written: cursor.rowsWritten
+        }
+      };
+    }
+    return cursor.toArray();
+  }
+  async runMigrations() {
+    if (this.hasRanMigrations)
+      return;
+    if (!this._migrations) {
+      throw new Error("No migrations provided");
+    }
+    const response = await this._migrations.runAll();
+    this.hasRanMigrations = true;
+    return response;
+  }
+  async __studio(cmd) {
+    const storage = this.raw;
+    if (cmd.type === "query") {
+      return this.query(cmd.statement, cmd.params);
+    } else if (cmd.type === "transaction") {
+      return storage.transaction(async () => {
+        const results = [];
+        for (const statement of cmd.statements) {
+          results.push(await this.query(statement, cmd.params, true));
+        }
+        return results;
+      });
+    }
+  }
 };
 
-type GameStats = {
-  gamesPlayed: number;
-  gamesWon: number;
-  totalTime: number;
-  wordle?: WordleStats;
-  sudoku?: {
-    lastSessionId?: string;
-    lastDifficulty?: "easy" | "medium" | "hard";
-  };
-  quiz?: Record<string, unknown>;
-};
-
-// Quiz models (client-visible)
-type QuizQuestion = {
-  id: string;
-  category: string;
-  difficulty: string;
-  question: string;
-  options: string[]; // length 4
-  coinsReward: number;
-};
-
-type QuizAssists = {
-  fifty: number; // 50:50 assists used
-  freeze: number; // freeze assists used
-};
-
-type QuizSessionState = "active" | "ended";
-
-type QuizSession = {
-  id: string;
-  userId: string;
-  questionOrder: number[]; // indices into quiz pool
-  pointer: number; // current question index pointer
-  lives: number;
-  score: number;
-  coinsEarned: number;
-  assistsUsed: QuizAssists;
-  createdAt: string;
-  updatedAt: string;
-  state: QuizSessionState;
-  // Server-only fields below must NEVER be sent to clients
-  _server?: {
-    perQuestion: Record<number, { correctIndex: number; optionShuffle: number[] }>;
-    freezeUntil?: number; // epoch ms; block stacking
-    lastAssistTimestamps?: number[]; // rate limit assists
-  };
-};
-
-type WordleSession = {
-  gameId: string;
-  word: string;
-  startedAt: string;
-  expiresAt: string;
-  attempts: number;
-  guessTimestamps: number[];
-  revealedPositions?: number[];
-};
-
-type UserRecord = {
-  userId: string;
-  name: string;
-  coins: number;
-  stats: GameStats;
-  createdAt: string;
-  updatedAt: string;
-  wordleSession?: WordleSession;
-  hintUses?: number;
-  searchUses?: number;
-  // Quiz data
-  quizSession?: QuizSession;
-};
-
-const ALLOWED_ORIGINS = new Set([
+// src/index.ts
+var ALLOWED_ORIGINS = /* @__PURE__ */ new Set([
   "http://localhost:5173",
   "http://localhost:8080",
   "http://localhost:8081",
   "http://127.0.0.1:5173",
   "http://127.0.0.1:8080",
-  "http://127.0.0.1:8081",
+  "http://127.0.0.1:8081"
 ]);
-
-const VALID_WORDS = [
-  "ABOUT", "ABOVE", "ABUSE", "ACTOR", "ACUTE", "ADMIT", "ADOPT", "ADULT", "AFTER", "AGAIN",
-  "AGENT", "AGREE", "AHEAD", "ALARM", "ALBUM", "ALERT", "ALIKE", "ALIVE", "ALLOW", "ALONE",
-  "ALONG", "ALTER", "ANGEL", "ANGER", "ANGLE", "ANGRY", "APART", "APPLE", "APPLY", "ARENA",
-  "ARGUE", "ARISE", "ARRAY", "ASIDE", "ASSET", "AUDIO", "AVOID", "AWAKE", "AWARD", "AWARE",
-  "BADLY", "BAKER", "BASES", "BASIC", "BASIS", "BEACH", "BEGAN", "BEGIN", "BEGUN", "BEING",
-  "BELOW", "BENCH", "BILLY", "BIRTH", "BLACK", "BLADE", "BLAME", "BLIND", "BLOCK", "BLOOD",
-  "BOARD", "BOOST", "BOOTH", "BOUND", "BRAIN", "BRAND", "BREAD", "BREAK", "BREED", "BRIEF",
-  "BRING", "BROAD", "BROKE", "BROWN", "BUILD", "BUILT", "BUYER", "CABLE", "CALIF", "CARRY",
-  "CATCH", "CAUSE", "CHAIN", "CHAIR", "CHART", "CHASE", "CHEAP", "CHECK", "CHEST", "CHIEF",
-  "CHILD", "CHINA", "CHOSE", "CIVIL", "CLAIM", "CLASS", "CLEAN", "CLEAR", "CLICK", "CLOCK",
-  "CLOSE", "COACH", "COAST", "COULD", "COUNT", "COURT", "COVER", "CRACK", "CRAFT", "CRASH",
-  "CRAZY", "CREAM", "CRIME", "CROSS", "CROWD", "CROWN", "CRUDE", "CURVE", "CYCLE", "DAILY",
-  "DANCE", "DATED", "DEALT", "DEATH", "DEBUT", "DELAY", "DEPTH", "DOING", "DOUBT", "DOZEN",
-  "DRAFT", "DRAMA", "DRANK", "DRAWN", "DREAM", "DRESS", "DRILL", "DRINK", "DRIVE", "DROVE",
-  "DYING", "EAGER", "EARLY", "EARTH", "EIGHT", "ELITE", "EMPTY", "ENEMY", "ENJOY", "ENTER",
-  "ENTRY", "EQUAL", "ERROR", "EVENT", "EVERY", "EXACT", "EXIST", "EXTRA", "FAITH", "FALSE",
-  "FAULT", "FIBER", "FIELD", "FIFTH", "FIFTY", "FIGHT", "FINAL", "FIRST", "FIXED", "FLASH",
-  "FLEET", "FLOOR", "FLUID", "FOCUS", "FORCE", "FORTH", "FORTY", "FORUM", "FOUND", "FRAME",
-  "FRANK", "FRAUD", "FRESH", "FRONT", "FRUIT", "FULLY", "FUNNY", "GIANT", "GIVEN", "GLASS",
-  "GLOBE", "GOING", "GRACE", "GRADE", "GRAND", "GRANT", "GRASS", "GREAT", "GREEN", "GROSS",
-  "GROUP", "GROWN", "GUARD", "GUESS", "GUEST", "GUIDE", "HAPPY", "HARRY", "HEART", "HEAVY",
-  "HENCE", "HENRY", "HORSE", "HOTEL", "HOUSE", "HUMAN", "IDEAL", "IMAGE", "INDEX", "INNER",
-  "INPUT", "ISSUE", "JAPAN", "JIMMY", "JOINT", "JONES", "JUDGE", "KNOWN", "LABEL", "LARGE",
-  "LASER", "LATER", "LAUGH", "LAYER", "LEARN", "LEASE", "LEAST", "LEAVE", "LEGAL", "LEMON",
-  "LEVEL", "LEWIS", "LIGHT", "LIMIT", "LINKS", "LIVES", "LOCAL", "LOGIC", "LOOSE", "LOWER",
-  "LUCKY", "LUNCH", "LYING", "MAGIC", "MAJOR", "MAKER", "MARCH", "MARIA", "MATCH", "MAYBE",
-  "MAYOR", "MEANT", "MEDIA", "METAL", "MIGHT", "MINOR", "MINUS", "MIXED", "MODEL", "MONEY",
-  "MONTH", "MORAL", "MOTOR", "MOUNT", "MOUSE", "MOUTH", "MOVIE", "MUSIC", "NEEDS", "NEVER",
-  "NEWLY", "NIGHT", "NOISE", "NORTH", "NOTED", "NOVEL", "NURSE", "OCCUR", "OCEAN", "OFFER",
-  "OFTEN", "ORDER", "OTHER", "OUGHT", "PAINT", "PANEL", "PAPER", "PARTY", "PEACE", "PETER",
-  "PHASE", "PHONE", "PHOTO", "PIECE", "PILOT", "PITCH", "PLACE", "PLAIN", "PLANE", "PLANT",
-  "PLATE", "POINT", "POUND", "POWER", "PRESS", "PRICE", "PRIDE", "PRIME", "PRINT", "PRIOR",
-  "PRIZE", "PROOF", "PROUD", "PROVE", "QUEEN", "QUICK", "QUIET", "QUITE", "RADIO", "RAISE",
-  "RANGE", "RAPID", "RATIO", "REACH", "READY", "REFER", "RIGHT", "RIVAL", "RIVER", "ROBIN",
-  "ROGER", "ROMAN", "ROUGH", "ROUND", "ROUTE", "ROYAL", "RURAL", "SCALE", "SCENE", "SCOPE",
-  "SCORE", "SENSE", "SERVE", "SEVEN", "SHALL", "SHAPE", "SHARE", "SHARP", "SHEET", "SHELF",
-  "SHELL", "SHIFT", "SHINE", "SHIRT", "SHOCK", "SHOOT", "SHORT", "SHOWN", "SIGHT", "SINCE",
-  "SIXTH", "SIXTY", "SIZED", "SKILL", "SLEEP", "SLIDE", "SMALL", "SMART", "SMILE", "SMITH",
-  "SMOKE", "SOLID", "SOLVE", "SORRY", "SOUND", "SOUTH", "SPACE", "SPARE", "SPEAK", "SPEED",
-  "SPEND", "SPENT", "SPLIT", "SPOKE", "SPORT", "STAFF", "STAGE", "STAKE", "STAND", "START",
-  "STATE", "STEAM", "STEEL", "STICK", "STILL", "STOCK", "STONE", "STOOD", "STORE", "STORM",
-  "STORY", "STRIP", "STUCK", "STUDY", "STUFF", "STYLE", "SUGAR", "SUITE", "SUPER", "SWEET",
-  "TABLE", "TAKEN", "TASTE", "TAXES", "TEACH", "TERRY", "TEXAS", "THANK", "THEFT", "THEIR",
-  "THEME", "THERE", "THESE", "THICK", "THING", "THINK", "THIRD", "THOSE", "THREE", "THREW",
-  "THROW", "TIGHT", "TIMES", "TITLE", "TODAY", "TOPIC", "TOTAL", "TOUCH", "TOUGH", "TOWER",
-  "TRACK", "TRADE", "TRAIN", "TREAT", "TREND", "TRIAL", "TRIBE", "TRICK", "TRIED", "TRIES",
-  "TROOP", "TRUCK", "TRULY", "TRUMP", "TRUST", "TRUTH", "TWICE", "UNDER", "UNDUE", "UNION",
-  "UNITY", "UNTIL", "UPPER", "URBAN", "USAGE", "USUAL", "VALID", "VALUE", "VIDEO", "VIRUS",
-  "VISIT", "VITAL", "VOCAL", "VOICE", "WASTE", "WATCH", "WATER", "WHEEL", "WHERE", "WHICH",
-  "WHILE", "WHITE", "WHOLE", "WHOSE", "WOMAN", "WOMEN", "WORLD", "WORRY", "WORSE", "WORST",
-  "WORTH", "WOULD", "WOUND", "WRITE", "WRONG", "WROTE", "YOUNG", "YOUTH"
+var VALID_WORDS = [
+  "ABOUT",
+  "ABOVE",
+  "ABUSE",
+  "ACTOR",
+  "ACUTE",
+  "ADMIT",
+  "ADOPT",
+  "ADULT",
+  "AFTER",
+  "AGAIN",
+  "AGENT",
+  "AGREE",
+  "AHEAD",
+  "ALARM",
+  "ALBUM",
+  "ALERT",
+  "ALIKE",
+  "ALIVE",
+  "ALLOW",
+  "ALONE",
+  "ALONG",
+  "ALTER",
+  "ANGEL",
+  "ANGER",
+  "ANGLE",
+  "ANGRY",
+  "APART",
+  "APPLE",
+  "APPLY",
+  "ARENA",
+  "ARGUE",
+  "ARISE",
+  "ARRAY",
+  "ASIDE",
+  "ASSET",
+  "AUDIO",
+  "AVOID",
+  "AWAKE",
+  "AWARD",
+  "AWARE",
+  "BADLY",
+  "BAKER",
+  "BASES",
+  "BASIC",
+  "BASIS",
+  "BEACH",
+  "BEGAN",
+  "BEGIN",
+  "BEGUN",
+  "BEING",
+  "BELOW",
+  "BENCH",
+  "BILLY",
+  "BIRTH",
+  "BLACK",
+  "BLADE",
+  "BLAME",
+  "BLIND",
+  "BLOCK",
+  "BLOOD",
+  "BOARD",
+  "BOOST",
+  "BOOTH",
+  "BOUND",
+  "BRAIN",
+  "BRAND",
+  "BREAD",
+  "BREAK",
+  "BREED",
+  "BRIEF",
+  "BRING",
+  "BROAD",
+  "BROKE",
+  "BROWN",
+  "BUILD",
+  "BUILT",
+  "BUYER",
+  "CABLE",
+  "CALIF",
+  "CARRY",
+  "CATCH",
+  "CAUSE",
+  "CHAIN",
+  "CHAIR",
+  "CHART",
+  "CHASE",
+  "CHEAP",
+  "CHECK",
+  "CHEST",
+  "CHIEF",
+  "CHILD",
+  "CHINA",
+  "CHOSE",
+  "CIVIL",
+  "CLAIM",
+  "CLASS",
+  "CLEAN",
+  "CLEAR",
+  "CLICK",
+  "CLOCK",
+  "CLOSE",
+  "COACH",
+  "COAST",
+  "COULD",
+  "COUNT",
+  "COURT",
+  "COVER",
+  "CRACK",
+  "CRAFT",
+  "CRASH",
+  "CRAZY",
+  "CREAM",
+  "CRIME",
+  "CROSS",
+  "CROWD",
+  "CROWN",
+  "CRUDE",
+  "CURVE",
+  "CYCLE",
+  "DAILY",
+  "DANCE",
+  "DATED",
+  "DEALT",
+  "DEATH",
+  "DEBUT",
+  "DELAY",
+  "DEPTH",
+  "DOING",
+  "DOUBT",
+  "DOZEN",
+  "DRAFT",
+  "DRAMA",
+  "DRANK",
+  "DRAWN",
+  "DREAM",
+  "DRESS",
+  "DRILL",
+  "DRINK",
+  "DRIVE",
+  "DROVE",
+  "DYING",
+  "EAGER",
+  "EARLY",
+  "EARTH",
+  "EIGHT",
+  "ELITE",
+  "EMPTY",
+  "ENEMY",
+  "ENJOY",
+  "ENTER",
+  "ENTRY",
+  "EQUAL",
+  "ERROR",
+  "EVENT",
+  "EVERY",
+  "EXACT",
+  "EXIST",
+  "EXTRA",
+  "FAITH",
+  "FALSE",
+  "FAULT",
+  "FIBER",
+  "FIELD",
+  "FIFTH",
+  "FIFTY",
+  "FIGHT",
+  "FINAL",
+  "FIRST",
+  "FIXED",
+  "FLASH",
+  "FLEET",
+  "FLOOR",
+  "FLUID",
+  "FOCUS",
+  "FORCE",
+  "FORTH",
+  "FORTY",
+  "FORUM",
+  "FOUND",
+  "FRAME",
+  "FRANK",
+  "FRAUD",
+  "FRESH",
+  "FRONT",
+  "FRUIT",
+  "FULLY",
+  "FUNNY",
+  "GIANT",
+  "GIVEN",
+  "GLASS",
+  "GLOBE",
+  "GOING",
+  "GRACE",
+  "GRADE",
+  "GRAND",
+  "GRANT",
+  "GRASS",
+  "GREAT",
+  "GREEN",
+  "GROSS",
+  "GROUP",
+  "GROWN",
+  "GUARD",
+  "GUESS",
+  "GUEST",
+  "GUIDE",
+  "HAPPY",
+  "HARRY",
+  "HEART",
+  "HEAVY",
+  "HENCE",
+  "HENRY",
+  "HORSE",
+  "HOTEL",
+  "HOUSE",
+  "HUMAN",
+  "IDEAL",
+  "IMAGE",
+  "INDEX",
+  "INNER",
+  "INPUT",
+  "ISSUE",
+  "JAPAN",
+  "JIMMY",
+  "JOINT",
+  "JONES",
+  "JUDGE",
+  "KNOWN",
+  "LABEL",
+  "LARGE",
+  "LASER",
+  "LATER",
+  "LAUGH",
+  "LAYER",
+  "LEARN",
+  "LEASE",
+  "LEAST",
+  "LEAVE",
+  "LEGAL",
+  "LEMON",
+  "LEVEL",
+  "LEWIS",
+  "LIGHT",
+  "LIMIT",
+  "LINKS",
+  "LIVES",
+  "LOCAL",
+  "LOGIC",
+  "LOOSE",
+  "LOWER",
+  "LUCKY",
+  "LUNCH",
+  "LYING",
+  "MAGIC",
+  "MAJOR",
+  "MAKER",
+  "MARCH",
+  "MARIA",
+  "MATCH",
+  "MAYBE",
+  "MAYOR",
+  "MEANT",
+  "MEDIA",
+  "METAL",
+  "MIGHT",
+  "MINOR",
+  "MINUS",
+  "MIXED",
+  "MODEL",
+  "MONEY",
+  "MONTH",
+  "MORAL",
+  "MOTOR",
+  "MOUNT",
+  "MOUSE",
+  "MOUTH",
+  "MOVIE",
+  "MUSIC",
+  "NEEDS",
+  "NEVER",
+  "NEWLY",
+  "NIGHT",
+  "NOISE",
+  "NORTH",
+  "NOTED",
+  "NOVEL",
+  "NURSE",
+  "OCCUR",
+  "OCEAN",
+  "OFFER",
+  "OFTEN",
+  "ORDER",
+  "OTHER",
+  "OUGHT",
+  "PAINT",
+  "PANEL",
+  "PAPER",
+  "PARTY",
+  "PEACE",
+  "PETER",
+  "PHASE",
+  "PHONE",
+  "PHOTO",
+  "PIECE",
+  "PILOT",
+  "PITCH",
+  "PLACE",
+  "PLAIN",
+  "PLANE",
+  "PLANT",
+  "PLATE",
+  "POINT",
+  "POUND",
+  "POWER",
+  "PRESS",
+  "PRICE",
+  "PRIDE",
+  "PRIME",
+  "PRINT",
+  "PRIOR",
+  "PRIZE",
+  "PROOF",
+  "PROUD",
+  "PROVE",
+  "QUEEN",
+  "QUICK",
+  "QUIET",
+  "QUITE",
+  "RADIO",
+  "RAISE",
+  "RANGE",
+  "RAPID",
+  "RATIO",
+  "REACH",
+  "READY",
+  "REFER",
+  "RIGHT",
+  "RIVAL",
+  "RIVER",
+  "ROBIN",
+  "ROGER",
+  "ROMAN",
+  "ROUGH",
+  "ROUND",
+  "ROUTE",
+  "ROYAL",
+  "RURAL",
+  "SCALE",
+  "SCENE",
+  "SCOPE",
+  "SCORE",
+  "SENSE",
+  "SERVE",
+  "SEVEN",
+  "SHALL",
+  "SHAPE",
+  "SHARE",
+  "SHARP",
+  "SHEET",
+  "SHELF",
+  "SHELL",
+  "SHIFT",
+  "SHINE",
+  "SHIRT",
+  "SHOCK",
+  "SHOOT",
+  "SHORT",
+  "SHOWN",
+  "SIGHT",
+  "SINCE",
+  "SIXTH",
+  "SIXTY",
+  "SIZED",
+  "SKILL",
+  "SLEEP",
+  "SLIDE",
+  "SMALL",
+  "SMART",
+  "SMILE",
+  "SMITH",
+  "SMOKE",
+  "SOLID",
+  "SOLVE",
+  "SORRY",
+  "SOUND",
+  "SOUTH",
+  "SPACE",
+  "SPARE",
+  "SPEAK",
+  "SPEED",
+  "SPEND",
+  "SPENT",
+  "SPLIT",
+  "SPOKE",
+  "SPORT",
+  "STAFF",
+  "STAGE",
+  "STAKE",
+  "STAND",
+  "START",
+  "STATE",
+  "STEAM",
+  "STEEL",
+  "STICK",
+  "STILL",
+  "STOCK",
+  "STONE",
+  "STOOD",
+  "STORE",
+  "STORM",
+  "STORY",
+  "STRIP",
+  "STUCK",
+  "STUDY",
+  "STUFF",
+  "STYLE",
+  "SUGAR",
+  "SUITE",
+  "SUPER",
+  "SWEET",
+  "TABLE",
+  "TAKEN",
+  "TASTE",
+  "TAXES",
+  "TEACH",
+  "TERRY",
+  "TEXAS",
+  "THANK",
+  "THEFT",
+  "THEIR",
+  "THEME",
+  "THERE",
+  "THESE",
+  "THICK",
+  "THING",
+  "THINK",
+  "THIRD",
+  "THOSE",
+  "THREE",
+  "THREW",
+  "THROW",
+  "TIGHT",
+  "TIMES",
+  "TITLE",
+  "TODAY",
+  "TOPIC",
+  "TOTAL",
+  "TOUCH",
+  "TOUGH",
+  "TOWER",
+  "TRACK",
+  "TRADE",
+  "TRAIN",
+  "TREAT",
+  "TREND",
+  "TRIAL",
+  "TRIBE",
+  "TRICK",
+  "TRIED",
+  "TRIES",
+  "TROOP",
+  "TRUCK",
+  "TRULY",
+  "TRUMP",
+  "TRUST",
+  "TRUTH",
+  "TWICE",
+  "UNDER",
+  "UNDUE",
+  "UNION",
+  "UNITY",
+  "UNTIL",
+  "UPPER",
+  "URBAN",
+  "USAGE",
+  "USUAL",
+  "VALID",
+  "VALUE",
+  "VIDEO",
+  "VIRUS",
+  "VISIT",
+  "VITAL",
+  "VOCAL",
+  "VOICE",
+  "WASTE",
+  "WATCH",
+  "WATER",
+  "WHEEL",
+  "WHERE",
+  "WHICH",
+  "WHILE",
+  "WHITE",
+  "WHOLE",
+  "WHOSE",
+  "WOMAN",
+  "WOMEN",
+  "WORLD",
+  "WORRY",
+  "WORSE",
+  "WORST",
+  "WORTH",
+  "WOULD",
+  "WOUND",
+  "WRITE",
+  "WRONG",
+  "WROTE",
+  "YOUNG",
+  "YOUTH"
 ];
-
-const SESSION_DURATION_MS = 70_000; // 70 seconds per session
-const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute window
-const RATE_LIMIT_MAX_GUESSES = 20; // max guesses per window per user
-const MAX_WORDLE_ATTEMPTS = 6;
-const FREE_HINTS = 3;
-const FREE_SEARCHES = 3;
-const PAID_ACTION_COST = 10;
-
-// Quiz constants
-const QUIZ_FREE_FIFTY = 2;
-const QUIZ_FREE_FREEZE = 2;
-const QUIZ_COST_FIFTY = 20;
-const QUIZ_COST_FREEZE = 10;
-const QUIZ_LIVES = 3;
-const QUIZ_RATE_LIMIT_WINDOW_MS = 30_000; // 30s window
-const QUIZ_RATE_LIMIT_MAX_ASSISTS = 3; // max assists per window
-const QUIZ_FREEZE_SECONDS = 8;
-const QUIZ_OPTIONS_COUNT = 4;
-const QUIZ_ROUND_QUESTIONS = 10;
-
-const DEFAULT_NAME = "Player";
-const STORAGE_KEY = "record";
-
-function isObject(value: unknown): value is Record<string, unknown> {
+var SESSION_DURATION_MS = 7e4;
+var RATE_LIMIT_WINDOW_MS = 6e4;
+var RATE_LIMIT_MAX_GUESSES = 20;
+var MAX_WORDLE_ATTEMPTS = 6;
+var FREE_HINTS = 3;
+var FREE_SEARCHES = 3;
+var PAID_ACTION_COST = 10;
+var QUIZ_FREE_FIFTY = 2;
+var QUIZ_FREE_FREEZE = 2;
+var QUIZ_COST_FIFTY = 20;
+var QUIZ_COST_FREEZE = 10;
+var QUIZ_LIVES = 3;
+var QUIZ_RATE_LIMIT_WINDOW_MS = 3e4;
+var QUIZ_RATE_LIMIT_MAX_ASSISTS = 3;
+var QUIZ_FREEZE_SECONDS = 8;
+var QUIZ_OPTIONS_COUNT = 4;
+var QUIZ_ROUND_QUESTIONS = 10;
+var DEFAULT_NAME = "Player";
+var STORAGE_KEY = "record";
+function isObject(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-
-function deepMerge<T extends Record<string, any>>(target: T, patch: Partial<T>): T {
+__name(isObject, "isObject");
+function deepMerge(target, patch) {
   for (const [key, value] of Object.entries(patch)) {
-    const current = (target as Record<string, unknown>)[key];
+    const current = target[key];
     if (isObject(current) && isObject(value)) {
-      (target as Record<string, unknown>)[key] = deepMerge({ ...current }, value) as unknown as T[keyof T];
-    } else if (value !== undefined) {
-      (target as Record<string, unknown>)[key] = value as T[keyof T];
+      target[key] = deepMerge({ ...current }, value);
+    } else if (value !== void 0) {
+      target[key] = value;
     }
   }
 }
-
-function isValidWordFromList(word: string): boolean {
+__name(deepMerge, "deepMerge");
+function isValidWordFromList(word) {
   return VALID_WORDS.includes(word.toUpperCase());
 }
-
-function hashString(input: string): number {
-  let hash = 0;
-  for (let i = 0; i < input.length; i += 1) {
-    hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
-  }
-  return hash;
-}
-
-function randomWord(): string {
+__name(isValidWordFromList, "isValidWordFromList");
+function randomWord() {
   const idx = randomIndex(VALID_WORDS.length);
   return VALID_WORDS[idx];
 }
-
-function randomIndex(maxExclusive: number): number {
+__name(randomWord, "randomWord");
+function randomIndex(maxExclusive) {
   const bytes = new Uint32Array(1);
   crypto.getRandomValues(bytes);
   return bytes[0] % maxExclusive;
 }
-
-function shuffleArray<T>(arr: T[]): T[] {
+__name(randomIndex, "randomIndex");
+function shuffleArray(arr) {
   const copy = arr.slice();
   for (let i = copy.length - 1; i > 0; i -= 1) {
     const j = randomIndex(i + 1);
@@ -216,34 +839,30 @@ function shuffleArray<T>(arr: T[]): T[] {
   }
   return copy;
 }
-
-function revealLetterUnique(session: WordleSession): { letter: string; position: number } {
+__name(shuffleArray, "shuffleArray");
+function revealLetterUnique(session) {
   const word = session.word;
   const revealed = new Set(session.revealedPositions ?? []);
-  const available: number[] = [];
+  const available = [];
   for (let i = 0; i < word.length; i += 1) {
     if (!revealed.has(i)) available.push(i);
   }
-
-  // If all positions are revealed, just return a consistent last hint (e.g., first position)
   const position = available.length > 0 ? available[randomIndex(available.length)] : 0;
   return { letter: word[position], position };
 }
-
-function isSessionActive(session: WordleSession | undefined, now: number): boolean {
+__name(revealLetterUnique, "revealLetterUnique");
+function isSessionActive(session, now) {
   if (!session) return false;
   const expiresAt = Date.parse(session.expiresAt);
   return now < expiresAt;
 }
-
-function remainingMs(session: WordleSession | undefined, now: number): number {
+__name(isSessionActive, "isSessionActive");
+function remainingMs(session, now) {
   if (!session) return 0;
   return Math.max(0, Date.parse(session.expiresAt) - now);
 }
-
-type LetterResult = "correct" | "present" | "absent";
-
-function updateWordleStats(record: UserRecord, session: WordleSession, victory: boolean, finishedAtMs: number): void {
+__name(remainingMs, "remainingMs");
+function updateWordleStats(record, session, victory, finishedAtMs) {
   const started = Date.parse(session.startedAt);
   const duration = Math.max(0, Math.min(finishedAtMs - started, SESSION_DURATION_MS));
   record.stats.gamesPlayed = (record.stats.gamesPlayed ?? 0) + 1;
@@ -252,34 +871,31 @@ function updateWordleStats(record: UserRecord, session: WordleSession, victory: 
   }
   record.stats.totalTime = (record.stats.totalTime ?? 0) + duration;
   record.stats.wordle = {
-    ...(record.stats.wordle ?? {}),
+    ...record.stats.wordle ?? {},
     attempts: session.attempts,
-    lastWord: session.word,
+    lastWord: session.word
   };
 }
-
-type AllowanceKind = "hint" | "search";
-
-function consumeAllowance(record: UserRecord, kind: AllowanceKind): { charged: boolean; remainingFree: number } {
+__name(updateWordleStats, "updateWordleStats");
+function consumeAllowance(record, kind) {
   const key = kind === "hint" ? "hintUses" : "searchUses";
   const freeCap = kind === "hint" ? FREE_HINTS : FREE_SEARCHES;
-  const current = (record as any)[key] ?? 0;
+  const current = record[key] ?? 0;
   if (current < freeCap) {
-    (record as any)[key] = current + 1;
+    record[key] = current + 1;
     return { charged: false, remainingFree: freeCap - (current + 1) };
   }
   if (record.coins < PAID_ACTION_COST) {
     throw new Error("Insufficient coins for this action");
   }
   record.coins -= PAID_ACTION_COST;
-  (record as any)[key] = current + 1;
+  record[key] = current + 1;
   return { charged: true, remainingFree: 0 };
 }
-
-function evaluateGuess(guess: string, target: string): LetterResult[] {
-  const result: LetterResult[] = Array(guess.length).fill("absent");
-  const targetCounts: Record<string, number> = {};
-
+__name(consumeAllowance, "consumeAllowance");
+function evaluateGuess(guess, target) {
+  const result = Array(guess.length).fill("absent");
+  const targetCounts = {};
   for (let i = 0; i < target.length; i += 1) {
     const t = target[i];
     if (guess[i] === t) {
@@ -288,7 +904,6 @@ function evaluateGuess(guess: string, target: string): LetterResult[] {
       targetCounts[t] = (targetCounts[t] || 0) + 1;
     }
   }
-
   for (let i = 0; i < target.length; i += 1) {
     if (result[i] === "correct") continue;
     const g = guess[i];
@@ -297,23 +912,22 @@ function evaluateGuess(guess: string, target: string): LetterResult[] {
       targetCounts[g] -= 1;
     }
   }
-
   return result;
 }
-
-function enforceRateLimit(session: WordleSession, now: number): void {
+__name(evaluateGuess, "evaluateGuess");
+function enforceRateLimit(session, now) {
   session.guessTimestamps = session.guessTimestamps.filter((ts) => now - ts <= RATE_LIMIT_WINDOW_MS);
   if (session.guessTimestamps.length >= RATE_LIMIT_MAX_GUESSES) {
     throw new Error("Too many guesses; please slow down.");
   }
   session.guessTimestamps.push(now);
 }
-
-function responseHeaders(origin: string | null): Headers {
+__name(enforceRateLimit, "enforceRateLimit");
+function responseHeaders(origin) {
   const headers = new Headers({
     "Content-Type": "application/json",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, x-user-id",
+    "Access-Control-Allow-Headers": "Content-Type, x-user-id"
   });
   if (!origin) {
     headers.set("Access-Control-Allow-Origin", "*");
@@ -322,23 +936,23 @@ function responseHeaders(origin: string | null): Headers {
   }
   return headers;
 }
-
-function jsonResponse(body: unknown, status: number, origin: string | null): Response {
+__name(responseHeaders, "responseHeaders");
+function jsonResponse(body, status, origin) {
   return new Response(JSON.stringify(body), { status, headers: responseHeaders(origin) });
 }
-
-function badRequest(message: string, origin: string | null): Response {
+__name(jsonResponse, "jsonResponse");
+function badRequest(message, origin) {
   return jsonResponse({ error: message }, 400, origin);
 }
-
-function handleOptions(request: Request): Response {
+__name(badRequest, "badRequest");
+function handleOptions(request) {
   const origin = request.headers.get("Origin");
   const headers = responseHeaders(origin);
   headers.set("Access-Control-Max-Age", "86400");
   return new Response(null, { status: 204, headers });
 }
-
-function normalizeUser(record: UserRecord): UserRecord {
+__name(handleOptions, "handleOptions");
+function normalizeUser(record) {
   return {
     ...record,
     name: record.name || DEFAULT_NAME,
@@ -350,59 +964,50 @@ function normalizeUser(record: UserRecord): UserRecord {
       totalTime: record.stats.totalTime ?? 0,
       wordle: record.stats.wordle ?? {},
       sudoku: record.stats.sudoku ?? {},
-      quiz: record.stats.quiz ?? {},
+      quiz: record.stats.quiz ?? {}
     },
-    wordleSession: record.wordleSession
-      ? {
-          ...record.wordleSession,
-          guessTimestamps: record.wordleSession.guessTimestamps ?? [],
-        }
-      : undefined,
-    quizSession: record.quizSession
-      ? {
-          ...record.quizSession,
-          _server: record.quizSession._server ?? { perQuestion: {}, lastAssistTimestamps: [] },
-        }
-      : undefined,
+    wordleSession: record.wordleSession ? {
+      ...record.wordleSession,
+      guessTimestamps: record.wordleSession.guessTimestamps ?? []
+    } : void 0,
+    quizSession: record.quizSession ? {
+      ...record.quizSession,
+      _server: record.quizSession._server ?? { perQuestion: {}, lastAssistTimestamps: [] }
+    } : void 0
   };
 }
-
-function sanitizeUserForResponse(record: UserRecord, nowMs: number): UserRecord {
+__name(normalizeUser, "normalizeUser");
+function sanitizeUserForResponse(record, nowMs) {
   const normalized = normalizeUser(record);
   const session = normalized.wordleSession;
   return {
     ...normalized,
-    wordleSession: session
-      ? {
-          gameId: session.gameId,
-          wordLength: session.word.length,
-          startedAt: session.startedAt,
-          expiresAt: session.expiresAt,
-          attempts: session.attempts,
-          guessTimestamps: session.guessTimestamps,
-          remainingTime: remainingMs(session, nowMs),
-        } as any
-      : undefined,
-    quizSession: normalized.quizSession
-      ? {
-          id: normalized.quizSession.id,
-          userId: normalized.quizSession.userId,
-          questionOrder: normalized.quizSession.questionOrder,
-          pointer: normalized.quizSession.pointer,
-          lives: normalized.quizSession.lives,
-          score: normalized.quizSession.score,
-          coinsEarned: normalized.quizSession.coinsEarned,
-          assistsUsed: normalized.quizSession.assistsUsed,
-          createdAt: normalized.quizSession.createdAt,
-          updatedAt: normalized.quizSession.updatedAt,
-          state: normalized.quizSession.state,
-        } as any
-      : undefined,
+    wordleSession: session ? {
+      gameId: session.gameId,
+      wordLength: session.word.length,
+      startedAt: session.startedAt,
+      expiresAt: session.expiresAt,
+      attempts: session.attempts,
+      guessTimestamps: session.guessTimestamps,
+      remainingTime: remainingMs(session, nowMs)
+    } : void 0,
+    quizSession: normalized.quizSession ? {
+      id: normalized.quizSession.id,
+      userId: normalized.quizSession.userId,
+      questionOrder: normalized.quizSession.questionOrder,
+      pointer: normalized.quizSession.pointer,
+      lives: normalized.quizSession.lives,
+      score: normalized.quizSession.score,
+      coinsEarned: normalized.quizSession.coinsEarned,
+      assistsUsed: normalized.quizSession.assistsUsed,
+      createdAt: normalized.quizSession.createdAt,
+      updatedAt: normalized.quizSession.updatedAt,
+      state: normalized.quizSession.state
+    } : void 0
   };
 }
-
-// In-memory quiz pool; server holds correctIndex but never returns it
-const QUIZ_POOL_INTERNAL: Array<QuizQuestion & { correctIndex: number }> = [
+__name(sanitizeUserForResponse, "sanitizeUserForResponse");
+var QUIZ_POOL_INTERNAL = [
   {
     id: "q1",
     category: "general",
@@ -410,7 +1015,7 @@ const QUIZ_POOL_INTERNAL: Array<QuizQuestion & { correctIndex: number }> = [
     question: "Which planet is known as the Red Planet?",
     options: ["Earth", "Mars", "Venus", "Jupiter"],
     coinsReward: 5,
-    correctIndex: 1,
+    correctIndex: 1
   },
   {
     id: "q2",
@@ -419,7 +1024,7 @@ const QUIZ_POOL_INTERNAL: Array<QuizQuestion & { correctIndex: number }> = [
     question: "What does CPU stand for?",
     options: ["Central Process Unit", "Central Processing Unit", "Computer Personal Unit", "Compute Power Unit"],
     coinsReward: 5,
-    correctIndex: 1,
+    correctIndex: 1
   },
   {
     id: "q3",
@@ -428,7 +1033,7 @@ const QUIZ_POOL_INTERNAL: Array<QuizQuestion & { correctIndex: number }> = [
     question: "H2O is the chemical formula for what?",
     options: ["Oxygen", "Hydrogen", "Water", "Helium"],
     coinsReward: 5,
-    correctIndex: 2,
+    correctIndex: 2
   },
   // Additional general knowledge questions
   { id: "q4", category: "general", difficulty: "easy", question: "What is the capital of France?", options: ["Berlin", "Madrid", "Paris", "Rome"], coinsReward: 5, correctIndex: 2 },
@@ -462,96 +1067,89 @@ const QUIZ_POOL_INTERNAL: Array<QuizQuestion & { correctIndex: number }> = [
   { id: "q32", category: "general", difficulty: "easy", question: "Which scientist proposed the theory of relativity?", options: ["Isaac Newton", "Albert Einstein", "Nikola Tesla", "Galileo Galilei"], coinsReward: 5, correctIndex: 1 },
   { id: "q33", category: "general", difficulty: "easy", question: "Which organ pumps blood through the body?", options: ["Lungs", "Heart", "Liver", "Kidneys"], coinsReward: 5, correctIndex: 1 },
   { id: "q34", category: "general", difficulty: "easy", question: "Which continent is home to the Amazon rainforest?", options: ["Africa", "Asia", "South America", "Australia"], coinsReward: 5, correctIndex: 2 },
-  { id: "q35", category: "general", difficulty: "easy", question: "What is the boiling point of water at sea level?", options: ["90°C", "100°C", "110°C", "120°C"], coinsReward: 5, correctIndex: 1 },
+  { id: "q35", category: "general", difficulty: "easy", question: "What is the boiling point of water at sea level?", options: ["90\xB0C", "100\xB0C", "110\xB0C", "120\xB0C"], coinsReward: 5, correctIndex: 1 },
   { id: "q36", category: "general", difficulty: "easy", question: "Which country is known for the pyramids of Giza?", options: ["Mexico", "Egypt", "Peru", "Sudan"], coinsReward: 5, correctIndex: 1 },
   { id: "q37", category: "general", difficulty: "easy", question: "Which animal is known as the King of the Jungle?", options: ["Tiger", "Lion", "Leopard", "Jaguar"], coinsReward: 5, correctIndex: 1 },
   { id: "q38", category: "general", difficulty: "easy", question: "Which gas do humans exhale?", options: ["Oxygen", "Carbon Dioxide", "Nitrogen", "Argon"], coinsReward: 5, correctIndex: 1 },
   { id: "q39", category: "general", difficulty: "easy", question: "Which city is known as the Big Apple?", options: ["Los Angeles", "Chicago", "New York", "Miami"], coinsReward: 5, correctIndex: 2 },
-  { id: "q40", category: "general", difficulty: "easy", question: "What is the primary language spoken in Brazil?", options: ["Spanish", "Portuguese", "French", "English"], coinsReward: 5, correctIndex: 1 },
+  { id: "q40", category: "general", difficulty: "easy", question: "What is the primary language spoken in Brazil?", options: ["Spanish", "Portuguese", "French", "English"], coinsReward: 5, correctIndex: 1 }
 ];
-
-function filterQuizPool(limit?: number, category?: string, difficulty?: string): QuizQuestion[] {
+function filterQuizPool(limit, category, difficulty) {
   let list = QUIZ_POOL_INTERNAL;
   if (category) list = list.filter((q) => q.category === category);
   if (difficulty) list = list.filter((q) => q.difficulty === difficulty);
   if (typeof limit === "number" && Number.isFinite(limit)) list = list.slice(0, Math.max(0, limit));
   return list.map(({ correctIndex: _ci, ...rest }) => ({ ...rest }));
 }
-
-function sanitizeQuestionForClient(q: QuizQuestion, optionOrder?: number[]): QuizQuestion {
+__name(filterQuizPool, "filterQuizPool");
+function sanitizeQuestionForClient(q, optionOrder) {
   if (!optionOrder) return q;
   const shuffledOptions = optionOrder.map((i) => q.options[i]);
   return { ...q, options: shuffledOptions };
 }
-
-function ensureQuizSessionServerState(session: QuizSession): void {
+__name(sanitizeQuestionForClient, "sanitizeQuestionForClient");
+function ensureQuizSessionServerState(session) {
   if (!session._server) session._server = { perQuestion: {}, lastAssistTimestamps: [] };
   if (!session._server.lastAssistTimestamps) session._server.lastAssistTimestamps = [];
 }
-
-function rateLimitAssist(session: QuizSession, now: number): void {
+__name(ensureQuizSessionServerState, "ensureQuizSessionServerState");
+function rateLimitAssist(session, now) {
   ensureQuizSessionServerState(session);
-  const arr = session._server!.lastAssistTimestamps!;
+  const arr = session._server.lastAssistTimestamps;
   const filtered = arr.filter((ts) => now - ts <= QUIZ_RATE_LIMIT_WINDOW_MS);
-  session._server!.lastAssistTimestamps = filtered;
+  session._server.lastAssistTimestamps = filtered;
   if (filtered.length >= QUIZ_RATE_LIMIT_MAX_ASSISTS) {
     throw new Error("Too many assists; please slow down.");
   }
   filtered.push(now);
 }
-
-function getCurrentQuestionIndex(session: QuizSession): number | null {
+__name(rateLimitAssist, "rateLimitAssist");
+function getCurrentQuestionIndex(session) {
   if (session.pointer < 0 || session.pointer >= session.questionOrder.length) return null;
   return session.questionOrder[session.pointer] ?? null;
 }
-
-function getOrCreateShuffleForQuestion(session: QuizSession, poolIndex: number): number[] {
+__name(getCurrentQuestionIndex, "getCurrentQuestionIndex");
+function getOrCreateShuffleForQuestion(session, poolIndex) {
   ensureQuizSessionServerState(session);
-  const entry = session._server!.perQuestion[poolIndex];
+  const entry = session._server.perQuestion[poolIndex];
   if (entry) return entry.optionShuffle;
   const correctIndex = QUIZ_POOL_INTERNAL[poolIndex].correctIndex;
   const order = shuffleArray([...Array(QUIZ_OPTIONS_COUNT).keys()]);
-  session._server!.perQuestion[poolIndex] = { correctIndex, optionShuffle: order };
+  session._server.perQuestion[poolIndex] = { correctIndex, optionShuffle: order };
   return order;
 }
-
-function getClientVisibleQuestion(session: QuizSession, poolIndex: number): QuizQuestion {
-  const base = filterQuizPool(undefined).find((q) => q.id === QUIZ_POOL_INTERNAL[poolIndex].id)!;
-  const order = getOrCreateShuffleForQuestion(session, poolIndex);
-  return sanitizeQuestionForClient(base, order);
-}
-
-function checkAnswer(session: QuizSession, poolIndex: number, selectedIndex: number): boolean {
+__name(getOrCreateShuffleForQuestion, "getOrCreateShuffleForQuestion");
+function checkAnswer(session, poolIndex, selectedIndex) {
   ensureQuizSessionServerState(session);
-  const entry = session._server!.perQuestion[poolIndex];
+  const entry = session._server.perQuestion[poolIndex];
   if (!entry) {
     getOrCreateShuffleForQuestion(session, poolIndex);
   }
-  const { correctIndex, optionShuffle } = session._server!.perQuestion[poolIndex];
+  const { correctIndex, optionShuffle } = session._server.perQuestion[poolIndex];
   const selectedOriginalIndex = optionShuffle[selectedIndex];
   return selectedOriginalIndex === correctIndex;
 }
-
-async function readJson(request: Request): Promise<any> {
+__name(checkAnswer, "checkAnswer");
+async function readJson(request) {
   try {
     return await request.json();
   } catch (err) {
     throw new Error("Invalid JSON body");
   }
 }
-
-function validateAmount(value: unknown): number {
+__name(readJson, "readJson");
+function validateAmount(value) {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
     throw new Error("amount must be a positive number");
   }
   return value;
 }
-
-function nowIso(): string {
-  return new Date().toISOString();
+__name(validateAmount, "validateAmount");
+function nowIso() {
+  return (/* @__PURE__ */ new Date()).toISOString();
 }
-
-function createDefaultUser(userId: string): UserRecord {
+__name(nowIso, "nowIso");
+function createDefaultUser(userId) {
   const timestamp = nowIso();
   return {
     userId,
@@ -563,109 +1161,88 @@ function createDefaultUser(userId: string): UserRecord {
       totalTime: 0,
       wordle: {},
       sudoku: {},
-      quiz: {},
+      quiz: {}
     },
     hintUses: 0,
     searchUses: 0,
     createdAt: timestamp,
-    updatedAt: timestamp,
+    updatedAt: timestamp
   };
 }
-
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+__name(createDefaultUser, "createDefaultUser");
+var src_default = {
+  async fetch(request, env) {
     if (request.method === "OPTIONS") {
       return handleOptions(request);
     }
-
     const origin = request.headers.get("Origin");
     const url = new URL(request.url);
     const { pathname } = url;
-
-    // Friendly message for browsers hitting the root without headers.
     if (!pathname.startsWith("/api/")) {
       return new Response(
         "Astra backend is running. Include 'x-user-id' header on /api requests.",
         { status: 200, headers: responseHeaders(origin) }
       );
     }
-
     let userId = request.headers.get("x-user-id")?.trim();
-    let generatedUserId: string | null = null;
-
+    let generatedUserId = null;
     if (!userId) {
       generatedUserId = crypto.randomUUID();
       userId = generatedUserId;
     }
-
     const id = env.USER_STATE.idFromName(userId);
     const stub = env.USER_STATE.get(id);
-
     const headers = new Headers(request.headers);
     headers.set("x-user-id", userId);
-
-    let body: ArrayBuffer | undefined = undefined;
-    if (request.method !== "GET" && request.method !== "HEAD") {
-      body = await request.arrayBuffer();
-    }
-    const forwardedRequest = new Request(request.url, {
-      method: request.method,
-      headers,
-      body,
-    });
+    const forwardedRequest = new Request(request, { headers });
     const response = await stub.fetch(forwardedRequest);
-
     if (generatedUserId) {
       const newHeaders = new Headers(response.headers);
       newHeaders.set("x-user-id", generatedUserId);
       return new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
-        headers: newHeaders,
+        headers: newHeaders
       });
     }
-
     return response;
-  },
+  }
 };
-
-export class UserStateSql {
-  state: DurableObjectState;
-  storage: Storage;
-  private migrationsReady: Promise<void>;
-
-  constructor(state: DurableObjectState) {
+var UserStateSql = class {
+  static {
+    __name(this, "UserStateSql");
+  }
+  state;
+  storage;
+  migrationsReady;
+  constructor(state) {
     this.state = state;
     this.storage = new Storage(state.storage);
     this.storage.migrations = [
       {
         idMonotonicInc: 1,
         description: "Create user_records table",
-        sql: "CREATE TABLE IF NOT EXISTS user_records (id TEXT PRIMARY KEY, data TEXT NOT NULL)",
+        sql: "CREATE TABLE IF NOT EXISTS user_records (id TEXT PRIMARY KEY, data TEXT NOT NULL)"
       },
       {
         idMonotonicInc: 2,
         description: "Create sudoku_sessions table",
-        sql: "CREATE TABLE IF NOT EXISTS sudoku_sessions (id TEXT PRIMARY KEY, payload TEXT NOT NULL)",
-      },
+        sql: "CREATE TABLE IF NOT EXISTS sudoku_sessions (id TEXT PRIMARY KEY, payload TEXT NOT NULL)"
+      }
     ];
-    this.migrationsReady = this.storage.runMigrations().then(() => {});
+    this.migrationsReady = this.storage.runMigrations();
   }
-
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request) {
     const url = new URL(request.url);
     const { pathname } = url;
     const origin = request.headers.get("Origin");
-
     if (request.method === "OPTIONS") {
       return handleOptions(request);
     }
-
     const userId = request.headers.get("x-user-id")?.trim();
     if (!userId) {
       return badRequest("Missing x-user-id header", origin);
     }
-
     try {
       switch (pathname) {
         case "/api/user/init":
@@ -730,105 +1307,82 @@ export class UserStateSql {
       return jsonResponse({ error: message }, 400, origin);
     }
   }
-
-  private methodNotAllowed(origin: string | null): Response {
+  methodNotAllowed(origin) {
     return jsonResponse({ error: "Method not allowed" }, 405, origin);
   }
-
-  private async ensureMigrations(): Promise<void> {
+  async ensureMigrations() {
     await this.migrationsReady;
   }
-
-  private async getRecord(userId: string): Promise<UserRecord> {
+  async getRecord(userId) {
     await this.ensureMigrations();
-    const rows = await this.storage.sql<{ data: string }>`SELECT data FROM user_records WHERE id = ${STORAGE_KEY} LIMIT 1;`;
-    const stored = rows[0]?.data ? (JSON.parse(rows[0].data) as UserRecord) : null;
+    const rows = await this.storage.sql`SELECT data FROM user_records WHERE id = ${STORAGE_KEY} LIMIT 1;`;
+    const stored = rows[0]?.data ? JSON.parse(rows[0].data) : null;
     if (stored) return normalizeUser(stored);
     const record = createDefaultUser(userId);
     await this.storage.sql`INSERT INTO user_records (id, data) VALUES (${STORAGE_KEY}, ${JSON.stringify(record)});`;
     return record;
   }
-
-  private async saveRecord(record: UserRecord): Promise<void> {
+  async saveRecord(record) {
     await this.ensureMigrations();
     const payload = JSON.stringify(record);
     await this.storage.sql`INSERT INTO user_records (id, data) VALUES (${STORAGE_KEY}, ${payload}) ON CONFLICT(id) DO UPDATE SET data = excluded.data;`;
   }
-
-  private async handleInit(userId: string, origin: string | null): Promise<Response> {
+  async handleInit(userId, origin) {
     const record = await this.getRecord(userId);
     return jsonResponse({ user: sanitizeUserForResponse(record, Date.now()) }, 200, origin);
   }
-
-  private async handleGet(userId: string, origin: string | null): Promise<Response> {
+  async handleGet(userId, origin) {
     const record = await this.getRecord(userId);
     return jsonResponse({ user: sanitizeUserForResponse(record, Date.now()) }, 200, origin);
   }
-
-  private async handleAddCoins(request: Request, userId: string, origin: string | null): Promise<Response> {
+  async handleAddCoins(request, userId, origin) {
     const body = await readJson(request);
     const amount = validateAmount(body?.amount);
-
     const record = await this.getRecord(userId);
     record.coins += amount;
     record.updatedAt = nowIso();
     await this.saveRecord(record);
-
     return jsonResponse({ balance: record.coins, user: sanitizeUserForResponse(record, Date.now()) }, 200, origin);
   }
-
-  private async handleSpendCoins(request: Request, userId: string, origin: string | null): Promise<Response> {
+  async handleSpendCoins(request, userId, origin) {
     const body = await readJson(request);
     const amount = validateAmount(body?.amount);
-
     const record = await this.getRecord(userId);
     if (record.coins < amount) {
       return jsonResponse({ error: "Insufficient balance" }, 400, origin);
     }
-
     record.coins -= amount;
     record.updatedAt = nowIso();
     await this.saveRecord(record);
-
     return jsonResponse({ balance: record.coins, user: sanitizeUserForResponse(record, Date.now()) }, 200, origin);
   }
-
-  private async handleUpdateStats(request: Request, userId: string, origin: string | null): Promise<Response> {
+  async handleUpdateStats(request, userId, origin) {
     const body = await readJson(request);
     if (!isObject(body)) {
       throw new Error("Body must be an object");
     }
-
-    const { statsPatch, name } = body as { statsPatch?: Partial<GameStats>; name?: string };
-    if (name !== undefined && typeof name !== "string") {
+    const { statsPatch, name } = body;
+    if (name !== void 0 && typeof name !== "string") {
       throw new Error("name must be a string");
     }
-
-    if (statsPatch !== undefined && !isObject(statsPatch)) {
+    if (statsPatch !== void 0 && !isObject(statsPatch)) {
       throw new Error("statsPatch must be an object");
     }
-
     const record = await this.getRecord(userId);
-
-    if (name !== undefined && name.trim().length > 0) {
+    if (name !== void 0 && name.trim().length > 0) {
       record.name = name.trim();
     }
-
     if (statsPatch) {
       record.stats = deepMerge(record.stats, statsPatch);
     }
-
     record.updatedAt = nowIso();
     await this.saveRecord(record);
-
     return jsonResponse({ user: record }, 200, origin);
   }
-
-  private async handleWordleWord(userId: string, origin: string | null): Promise<Response> {
+  async handleWordleWord(userId, origin) {
     const record = await this.getRecord(userId);
     const now = Date.now();
     const active = record.wordleSession;
-
     if (active && isSessionActive(active, now)) {
       const remaining = remainingMs(active, now);
       return jsonResponse(
@@ -836,18 +1390,16 @@ export class UserStateSql {
           gameId: active.gameId,
           wordLength: active.word.length,
           remainingTime: remaining,
-          resumed: true,
+          resumed: true
         },
         200,
         origin
       );
     }
-
     const word = randomWord();
     const gameId = crypto.randomUUID();
     const startedAt = new Date(now).toISOString();
     const expiresAt = new Date(now + SESSION_DURATION_MS).toISOString();
-
     record.wordleSession = {
       gameId,
       word,
@@ -855,23 +1407,19 @@ export class UserStateSql {
       expiresAt,
       attempts: 0,
       guessTimestamps: [],
-      revealedPositions: [],
+      revealedPositions: []
     };
     record.updatedAt = nowIso();
     await this.saveRecord(record);
-
     return jsonResponse({ gameId, wordLength: word.length, remainingTime: SESSION_DURATION_MS }, 200, origin);
   }
-
-  private async handleWordleValidate(request: Request, userId: string, origin: string | null): Promise<Response> {
+  async handleWordleValidate(request, userId, origin) {
     const body = await readJson(request);
     const guessRaw = typeof body?.guess === "string" ? body.guess.trim() : "";
-    const gameId = typeof body?.gameId === "string" ? body.gameId.trim() : undefined;
-
+    const gameId = typeof body?.gameId === "string" ? body.gameId.trim() : void 0;
     if (!guessRaw) {
       return jsonResponse({ error: "guess is required" }, 400, origin);
     }
-
     const guess = guessRaw.toUpperCase();
     if (guess.length !== 5 || /[^A-Z]/.test(guess)) {
       return jsonResponse({ error: "guess must be 5 letters" }, 400, origin);
@@ -879,88 +1427,68 @@ export class UserStateSql {
     if (!isValidWordFromList(guess)) {
       return jsonResponse({ error: "guess is not in word list" }, 400, origin);
     }
-
     const record = await this.getRecord(userId);
     const session = record.wordleSession;
     const now = Date.now();
-
     if (!session) {
       return jsonResponse({ error: "No active session" }, 409, origin);
     }
-
     if (gameId && session.gameId !== gameId) {
       return jsonResponse({ error: "Mismatched gameId" }, 409, origin);
     }
-
     if (!isSessionActive(session, now)) {
-      record.wordleSession = undefined;
+      record.wordleSession = void 0;
       record.updatedAt = nowIso();
       await this.saveRecord(record);
       return jsonResponse({ error: "Session expired", target: session.word }, 410, origin);
     }
-
     try {
       enforceRateLimit(session, now);
     } catch (err) {
-      return jsonResponse({ error: (err as Error).message }, 429, origin);
+      return jsonResponse({ error: err.message }, 429, origin);
     }
-
     session.attempts += 1;
     const result = evaluateGuess(guess, session.word);
     const victory = result.every((r) => r === "correct");
-
     if (victory) {
       updateWordleStats(record, session, true, now);
-      record.wordleSession = undefined;
+      record.wordleSession = void 0;
       record.updatedAt = nowIso();
       await this.saveRecord(record);
       return jsonResponse({ result, victory: true, target: session.word }, 200, origin);
     }
-
     const remainingTime = remainingMs(session, now);
     if (remainingTime <= 0) {
       updateWordleStats(record, session, false, now);
-      record.wordleSession = undefined;
+      record.wordleSession = void 0;
       record.updatedAt = nowIso();
       await this.saveRecord(record);
       return jsonResponse({ error: "Session expired", target: session.word }, 410, origin);
     }
-
     if (session.attempts >= MAX_WORDLE_ATTEMPTS) {
       const target = session.word;
       updateWordleStats(record, session, false, now);
-      record.wordleSession = undefined;
+      record.wordleSession = void 0;
       record.updatedAt = nowIso();
       await this.saveRecord(record);
       return jsonResponse({ result, victory: false, target, remainingTime }, 200, origin);
     }
-
     record.wordleSession = session;
     record.updatedAt = nowIso();
     await this.saveRecord(record);
-
     return jsonResponse({ result, victory: false, remainingTime }, 200, origin);
   }
-
-  private async handleWordleAllowance(
-    userId: string,
-    origin: string | null,
-    kind: AllowanceKind
-  ): Promise<Response> {
+  async handleWordleAllowance(userId, origin, kind) {
     const record = await this.getRecord(userId);
     const now = Date.now();
-
-    // Require active session to prevent abuse
     const session = record.wordleSession;
     if (!session || !isSessionActive(session, now)) {
       return jsonResponse({ error: "No active session" }, 409, origin);
     }
-
     try {
       const { charged, remainingFree } = consumeAllowance(record, kind);
       const { letter, position } = revealLetterUnique(session);
-      // Track revealed position to avoid duplicates in subsequent hints
-      session.revealedPositions = Array.from(new Set([...(session.revealedPositions ?? []), position]));
+      session.revealedPositions = Array.from(/* @__PURE__ */ new Set([...session.revealedPositions ?? [], position]));
       record.updatedAt = nowIso();
       await this.saveRecord(record);
       const basePayload = {
@@ -969,26 +1497,19 @@ export class UserStateSql {
         remainingFree,
         balance: record.coins,
         user: sanitizeUserForResponse(record, now),
-        letter,
+        letter
       };
-
       if (kind === "hint") {
         return jsonResponse({ ...basePayload, position }, 200, origin);
       }
-
       return jsonResponse(basePayload, 200, origin);
     } catch (err) {
-      return jsonResponse({ error: (err as Error).message }, 400, origin);
+      return jsonResponse({ error: err.message }, 400, origin);
     }
   }
-
   // --- Sudoku helpers & endpoints ---
-  private generateCompleteGrid(): number[][] {
-    const grid: (number | null)[][] = Array(9)
-      .fill(null)
-      .map(() => Array(9).fill(null));
-
-    // Fill diagonal 3x3 boxes with shuffled digits
+  generateCompleteGrid() {
+    const grid = Array(9).fill(null).map(() => Array(9).fill(null));
     for (let box = 0; box < 9; box += 3) {
       const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9];
       for (let i = 0; i < 3; i++) {
@@ -999,8 +1520,7 @@ export class UserStateSql {
         }
       }
     }
-
-    const isValid = (g: (number | null)[][], r: number, c: number, n: number): boolean => {
+    const isValid = /* @__PURE__ */ __name((g, r, c, n) => {
       for (let x = 0; x < 9; x++) {
         if (g[r][x] === n) return false;
         if (g[x][c] === n) return false;
@@ -1013,9 +1533,8 @@ export class UserStateSql {
         }
       }
       return true;
-    };
-
-    const solve = (g: (number | null)[][]): boolean => {
+    }, "isValid");
+    const solve = /* @__PURE__ */ __name((g) => {
       for (let r = 0; r < 9; r++) {
         for (let c = 0; c < 9; c++) {
           if (g[r][c] === null) {
@@ -1031,15 +1550,13 @@ export class UserStateSql {
         }
       }
       return true;
-    };
-
+    }, "solve");
     solve(grid);
-    return grid.map((row) => row.map((x) => x as number));
+    return grid.map((row) => row.map((x) => x));
   }
-
-  private generatePuzzle(difficulty: "easy" | "medium" | "hard"): { puzzle: (number | null)[][]; solution: number[][] } {
+  generatePuzzle(difficulty) {
     const solution = this.generateCompleteGrid();
-    const puzzle: (number | null)[][] = solution.map((row) => row.map((n) => n));
+    const puzzle = solution.map((row) => row.map((n) => n));
     const cellsToRemove = difficulty === "easy" ? 35 : difficulty === "medium" ? 45 : 55;
     let removed = 0;
     while (removed < cellsToRemove) {
@@ -1052,59 +1569,49 @@ export class UserStateSql {
     }
     return { puzzle, solution };
   }
-
-  private sudokuStorageKey(sessionId: string): string {
+  sudokuStorageKey(sessionId) {
     return `sudoku:${sessionId}`;
   }
-
-  private async saveSudokuSession(session: { id: string; difficulty: "easy" | "medium" | "hard"; puzzle: (number | null)[][]; solution: number[][]; createdAt: string }): Promise<void> {
+  async saveSudokuSession(session) {
     await this.ensureMigrations();
     const key = this.sudokuStorageKey(session.id);
     const payload = JSON.stringify(session);
     await this.storage.sql`INSERT INTO sudoku_sessions (id, payload) VALUES (${key}, ${payload}) ON CONFLICT(id) DO UPDATE SET payload = excluded.payload;`;
   }
-
-  private async loadSudokuSession(sessionId: string): Promise<{ id: string; difficulty: "easy" | "medium" | "hard"; puzzle: (number | null)[][]; solution: number[][]; createdAt: string } | null> {
+  async loadSudokuSession(sessionId) {
     await this.ensureMigrations();
     const key = this.sudokuStorageKey(sessionId);
-    const rows = await this.storage.sql<{ payload: string }>`SELECT payload FROM sudoku_sessions WHERE id = ${key} LIMIT 1;`;
+    const rows = await this.storage.sql`SELECT payload FROM sudoku_sessions WHERE id = ${key} LIMIT 1;`;
     const payload = rows[0]?.payload;
-    return payload ? (JSON.parse(payload) as { id: string; difficulty: "easy" | "medium" | "hard"; puzzle: (number | null)[][]; solution: number[][]; createdAt: string }) : null;
+    return payload ? JSON.parse(payload) : null;
   }
-
-  private async handleSudokuStart(request: Request, userId: string, origin: string | null): Promise<Response> {
+  async handleSudokuStart(request, userId, origin) {
     const body = await readJson(request);
-    const difficulty = body?.difficulty as ("easy" | "medium" | "hard") | undefined;
+    const difficulty = body?.difficulty;
     if (!difficulty || !["easy", "medium", "hard"].includes(difficulty)) {
       return badRequest("Invalid difficulty", origin);
     }
-
     const { puzzle, solution } = this.generatePuzzle(difficulty);
     const sessionId = crypto.randomUUID();
     const createdAt = nowIso();
-  await this.saveSudokuSession({ id: sessionId, difficulty, puzzle, solution, createdAt });
-
+    await this.saveSudokuSession({ id: sessionId, difficulty, puzzle, solution, createdAt });
     const record = await this.getRecord(userId);
     record.stats.sudoku = { lastSessionId: sessionId, lastDifficulty: difficulty };
     record.updatedAt = nowIso();
     await this.saveRecord(record);
-
     const time = difficulty === "easy" ? 300 : difficulty === "medium" ? 180 : 120;
     return jsonResponse({ sessionId, puzzle, time }, 200, origin);
   }
-
-  private async handleSudokuCheck(request: Request, _userId: string, origin: string | null): Promise<Response> {
+  async handleSudokuCheck(request, _userId, origin) {
     const body = await readJson(request);
-    const sessionId = body?.sessionId as string;
-    const grid = body?.grid as (number | null)[][];
+    const sessionId = body?.sessionId;
+    const grid = body?.grid;
     if (!sessionId || !Array.isArray(grid) || grid.length !== 9) {
       return badRequest("Invalid payload", origin);
     }
-
     const session = await this.loadSudokuSession(sessionId);
     if (!session) return jsonResponse({ error: "Session not found" }, 404, origin);
-
-    const invalid: string[] = [];
+    const invalid = [];
     let complete = true;
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
@@ -1115,92 +1622,71 @@ export class UserStateSql {
         }
       }
     }
-
     const correctSoFar = invalid.length === 0;
     const solved = correctSoFar && complete;
     return jsonResponse({ invalidCells: invalid, correctSoFar, complete: solved }, 200, origin);
   }
-
-  private async handleSudokuHint(request: Request, _userId: string, origin: string | null): Promise<Response> {
+  async handleSudokuHint(request, _userId, origin) {
     const body = await readJson(request);
-    const sessionId = body?.sessionId as string;
-    const grid = body?.grid as (number | null)[][];
+    const sessionId = body?.sessionId;
+    const grid = body?.grid;
     if (!sessionId || !Array.isArray(grid) || grid.length !== 9) {
       return badRequest("Invalid payload", origin);
     }
-
     const session = await this.loadSudokuSession(sessionId);
     if (!session) return jsonResponse({ error: "Session not found" }, 404, origin);
-
-    const empties: Array<[number, number]> = [];
+    const empties = [];
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
         if (grid[r][c] === null) empties.push([r, c]);
       }
     }
-
     if (empties.length === 0) {
       return jsonResponse({ message: "No empty cells" }, 200, origin);
     }
-
     const [row, col] = empties[randomIndex(empties.length)];
     const value = session.solution[row][col];
     return jsonResponse({ row, col, value }, 200, origin);
   }
-
   // Quiz: GET questions pool (without answers); shuffle options per-session
-  private async handleQuizQuestions(request: Request, userId: string, origin: string | null): Promise<Response> {
+  async handleQuizQuestions(request, userId, origin) {
     const url = new URL(request.url);
     const limitParam = url.searchParams.get("limit");
-    const category = url.searchParams.get("category") ?? undefined;
-    const difficulty = url.searchParams.get("difficulty") ?? undefined;
-    const limit = limitParam ? Number(limitParam) : undefined;
-
+    const category = url.searchParams.get("category") ?? void 0;
+    const difficulty = url.searchParams.get("difficulty") ?? void 0;
+    const limit = limitParam ? Number(limitParam) : void 0;
     const record = await this.getRecord(userId);
     const session = record.quizSession;
-
-    // No active session: return filtered pool honoring limit
     if (!session) {
-      const pool = filterQuizPool(limit, category ?? undefined, difficulty ?? undefined);
-      return jsonResponse({ questions: pool }, 200, origin);
+      const pool2 = filterQuizPool(limit, category ?? void 0, difficulty ?? void 0);
+      return jsonResponse({ questions: pool2 }, 200, origin);
     }
-
-    // Active session: lock to the session's question order to keep option shuffles aligned
-    const pool = filterQuizPool(undefined, category ?? undefined, difficulty ?? undefined);
+    const pool = filterQuizPool(void 0, category ?? void 0, difficulty ?? void 0);
     const order = session.questionOrder ?? [];
-    const limitedOrder = typeof limit === "number" && Number.isFinite(limit)
-      ? order.slice(0, Math.max(0, limit))
-      : order;
-
-    const mapped: QuizQuestion[] = limitedOrder
-      .map((idx) => {
-        const base = pool[idx] ?? QUIZ_POOL_INTERNAL[idx];
-        if (!base) return null;
-        const shuffle = getOrCreateShuffleForQuestion(session, idx);
-        return sanitizeQuestionForClient(base, shuffle);
-      })
-      .filter((q): q is QuizQuestion => Boolean(q));
-
+    const limitedOrder = typeof limit === "number" && Number.isFinite(limit) ? order.slice(0, Math.max(0, limit)) : order;
+    const mapped = limitedOrder.map((idx) => {
+      const base = pool[idx] ?? QUIZ_POOL_INTERNAL[idx];
+      if (!base) return null;
+      const shuffle = getOrCreateShuffleForQuestion(session, idx);
+      return sanitizeQuestionForClient(base, shuffle);
+    }).filter((q) => Boolean(q));
     record.updatedAt = nowIso();
     await this.saveRecord(record);
     return jsonResponse({ questions: mapped }, 200, origin);
   }
-
   // Quiz: start session, spend coins entry, init question order
-  private async handleQuizSessionStart(request: Request, userId: string, origin: string | null): Promise<Response> {
+  async handleQuizSessionStart(request, userId, origin) {
     const body = await readJson(request);
     const entryCost = validateAmount(body?.entryCost ?? 0);
-
     const record = await this.getRecord(userId);
     if (record.coins < entryCost) {
       return jsonResponse({ error: "Insufficient balance" }, 400, origin);
     }
     record.coins -= entryCost;
-
     const totalQuestions = QUIZ_POOL_INTERNAL.length;
     const order = shuffleArray([...Array(totalQuestions).keys()]).slice(0, QUIZ_ROUND_QUESTIONS);
     const now = Date.now();
-    const session: QuizSession = {
+    const session = {
       id: crypto.randomUUID(),
       userId,
       questionOrder: order,
@@ -1212,31 +1698,26 @@ export class UserStateSql {
       createdAt: new Date(now).toISOString(),
       updatedAt: new Date(now).toISOString(),
       state: "active",
-      _server: { perQuestion: {}, lastAssistTimestamps: [] },
+      _server: { perQuestion: {}, lastAssistTimestamps: [] }
     };
-
     record.quizSession = session;
     record.updatedAt = nowIso();
     await this.saveRecord(record);
-
     const clientSession = sanitizeUserForResponse(record, now).quizSession;
     return jsonResponse({ session: clientSession, balance: record.coins }, 200, origin);
   }
-
   // Quiz: submit answer for current pointer
-  private async handleQuizAnswer(request: Request, userId: string, origin: string | null, sessionId: string): Promise<Response> {
+  async handleQuizAnswer(request, userId, origin, sessionId) {
     const body = await readJson(request);
-    const selectedIndex = typeof body?.selectedIndex === "number" ? body.selectedIndex : undefined;
-    if (selectedIndex === undefined || selectedIndex < 0 || selectedIndex >= QUIZ_OPTIONS_COUNT) {
+    const selectedIndex = typeof body?.selectedIndex === "number" ? body.selectedIndex : void 0;
+    if (selectedIndex === void 0 || selectedIndex < 0 || selectedIndex >= QUIZ_OPTIONS_COUNT) {
       return jsonResponse({ error: "selectedIndex out of range" }, 400, origin);
     }
-
     const record = await this.getRecord(userId);
     const session = record.quizSession;
     if (!session || session.state !== "active" || session.id !== sessionId) {
       return jsonResponse({ error: "No active session" }, 409, origin);
     }
-
     const poolIndex = getCurrentQuestionIndex(session);
     if (poolIndex === null) {
       session.state = "ended";
@@ -1244,7 +1725,6 @@ export class UserStateSql {
       await this.saveRecord(record);
       return jsonResponse({ error: "Session has no questions", done: true }, 400, origin);
     }
-
     const correct = checkAnswer(session, poolIndex, selectedIndex);
     const reward = correct ? QUIZ_POOL_INTERNAL[poolIndex].coinsReward : 0;
     if (correct) {
@@ -1254,15 +1734,12 @@ export class UserStateSql {
     } else {
       session.lives = Math.max(0, session.lives - 1);
     }
-
-    // advance pointer or end
     session.pointer += 1;
     const done = session.pointer >= session.questionOrder.length || session.lives <= 0;
     if (done) session.state = "ended";
     session.updatedAt = nowIso();
     record.updatedAt = nowIso();
     await this.saveRecord(record);
-
     return jsonResponse({
       correct,
       lives: session.lives,
@@ -1270,12 +1747,11 @@ export class UserStateSql {
       coinsEarned: session.coinsEarned,
       pointer: session.pointer,
       done,
-      balance: record.coins,
+      balance: record.coins
     }, 200, origin);
   }
-
   // Quiz: 50:50 assist - return two indices to hide (wrong options); free first two uses, then charge
-  private async handleQuizAssistFifty(userId: string, origin: string | null, sessionId: string): Promise<Response> {
+  async handleQuizAssistFifty(userId, origin, sessionId) {
     const record = await this.getRecord(userId);
     const session = record.quizSession;
     const now = Date.now();
@@ -1283,11 +1759,8 @@ export class UserStateSql {
       return jsonResponse({ error: "No active session" }, 409, origin);
     }
     rateLimitAssist(session, now);
-
     const poolIndex = getCurrentQuestionIndex(session);
     if (poolIndex === null) return jsonResponse({ error: "No current question" }, 400, origin);
-
-    // Charge if beyond free uses
     let charged = false;
     if (session.assistsUsed.fifty >= QUIZ_FREE_FIFTY) {
       if (record.coins < QUIZ_COST_FIFTY) return jsonResponse({ error: "Insufficient balance" }, 400, origin);
@@ -1295,24 +1768,20 @@ export class UserStateSql {
       charged = true;
     }
     session.assistsUsed.fifty += 1;
-
     const mapping = getOrCreateShuffleForQuestion(session, poolIndex);
-    const correctOriginal = session._server!.perQuestion[poolIndex].correctIndex;
-    // Build list of wrong indices in client-shuffled space
-    const wrongClientIndices: number[] = [];
+    const correctOriginal = session._server.perQuestion[poolIndex].correctIndex;
+    const wrongClientIndices = [];
     for (let i = 0; i < QUIZ_OPTIONS_COUNT; i += 1) {
       const orig = mapping[i];
       if (orig !== correctOriginal) wrongClientIndices.push(i);
     }
     const hide = shuffleArray(wrongClientIndices).slice(0, 2);
-
     record.updatedAt = nowIso();
     await this.saveRecord(record);
     return jsonResponse({ indices: hide, charged, remainingFree: Math.max(0, QUIZ_FREE_FIFTY - session.assistsUsed.fifty) + (charged ? 0 : 0), balance: record.coins }, 200, origin);
   }
-
   // Quiz: freeze timer for 8s; prevent stacking
-  private async handleQuizAssistFreeze(userId: string, origin: string | null, sessionId: string): Promise<Response> {
+  async handleQuizAssistFreeze(userId, origin, sessionId) {
     const record = await this.getRecord(userId);
     const session = record.quizSession;
     const now = Date.now();
@@ -1320,12 +1789,10 @@ export class UserStateSql {
       return jsonResponse({ error: "No active session" }, 409, origin);
     }
     rateLimitAssist(session, now);
-
     ensureQuizSessionServerState(session);
-    if (session._server!.freezeUntil && now < session._server!.freezeUntil) {
+    if (session._server.freezeUntil && now < session._server.freezeUntil) {
       return jsonResponse({ error: "Freeze already active" }, 429, origin);
     }
-
     let charged = false;
     if (session.assistsUsed.freeze >= QUIZ_FREE_FREEZE) {
       if (record.coins < QUIZ_COST_FREEZE) return jsonResponse({ error: "Insufficient balance" }, 400, origin);
@@ -1333,16 +1800,14 @@ export class UserStateSql {
       charged = true;
     }
     session.assistsUsed.freeze += 1;
-    session._server!.freezeUntil = now + QUIZ_FREEZE_SECONDS * 1000;
+    session._server.freezeUntil = now + QUIZ_FREEZE_SECONDS * 1e3;
     session.updatedAt = nowIso();
     record.updatedAt = nowIso();
     await this.saveRecord(record);
-
     return jsonResponse({ freezeSeconds: QUIZ_FREEZE_SECONDS, charged, balance: record.coins }, 200, origin);
   }
-
   // Quiz: skip current question (move to end)
-  private async handleQuizSkip(userId: string, origin: string | null, sessionId: string): Promise<Response> {
+  async handleQuizSkip(userId, origin, sessionId) {
     const record = await this.getRecord(userId);
     const session = record.quizSession;
     if (!session || session.state !== "active" || session.id !== sessionId) {
@@ -1350,8 +1815,6 @@ export class UserStateSql {
     }
     const poolIndex = getCurrentQuestionIndex(session);
     if (poolIndex === null) return jsonResponse({ error: "No current question" }, 400, origin);
-
-    // Move current question to end and advance pointer
     const current = session.questionOrder.splice(session.pointer, 1)[0];
     session.questionOrder.push(current);
     session.pointer += 1;
@@ -1361,9 +1824,8 @@ export class UserStateSql {
     const done = session.pointer >= session.questionOrder.length;
     return jsonResponse({ pointer: session.pointer, done }, 200, origin);
   }
-
   // Quiz: end session and return summary (no answers)
-  private async handleQuizEnd(userId: string, origin: string | null, sessionId: string): Promise<Response> {
+  async handleQuizEnd(userId, origin, sessionId) {
     const record = await this.getRecord(userId);
     const session = record.quizSession;
     if (!session || session.id !== sessionId) return jsonResponse({ error: "No session" }, 404, origin);
@@ -1379,9 +1841,185 @@ export class UserStateSql {
         lives: session.lives,
         totalQuestions: session.questionOrder.length,
         assistsUsed: session.assistsUsed,
-        state: session.state,
+        state: session.state
       },
-      balance: record.coins,
+      balance: record.coins
     }, 200, origin);
   }
+};
+
+// node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
+var drainBody = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx) => {
+  try {
+    return await middlewareCtx.next(request, env);
+  } finally {
+    try {
+      if (request.body !== null && !request.bodyUsed) {
+        const reader = request.body.getReader();
+        while (!(await reader.read()).done) {
+        }
+      }
+    } catch (e) {
+      console.error("Failed to drain the unused request body.", e);
+    }
+  }
+}, "drainBody");
+var middleware_ensure_req_body_drained_default = drainBody;
+
+// node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts
+function reduceError(e) {
+  return {
+    name: e?.name,
+    message: e?.message ?? String(e),
+    stack: e?.stack,
+    cause: e?.cause === void 0 ? void 0 : reduceError(e.cause)
+  };
 }
+__name(reduceError, "reduceError");
+var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx) => {
+  try {
+    return await middlewareCtx.next(request, env);
+  } catch (e) {
+    const error = reduceError(e);
+    return Response.json(error, {
+      status: 500,
+      headers: { "MF-Experimental-Error-Stack": "true" }
+    });
+  }
+}, "jsonError");
+var middleware_miniflare3_json_error_default = jsonError;
+
+// .wrangler/tmp/bundle-0oruRV/middleware-insertion-facade.js
+var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
+  middleware_ensure_req_body_drained_default,
+  middleware_miniflare3_json_error_default
+];
+var middleware_insertion_facade_default = src_default;
+
+// node_modules/wrangler/templates/middleware/common.ts
+var __facade_middleware__ = [];
+function __facade_register__(...args) {
+  __facade_middleware__.push(...args.flat());
+}
+__name(__facade_register__, "__facade_register__");
+function __facade_invokeChain__(request, env, ctx, dispatch, middlewareChain) {
+  const [head, ...tail] = middlewareChain;
+  const middlewareCtx = {
+    dispatch,
+    next(newRequest, newEnv) {
+      return __facade_invokeChain__(newRequest, newEnv, ctx, dispatch, tail);
+    }
+  };
+  return head(request, env, ctx, middlewareCtx);
+}
+__name(__facade_invokeChain__, "__facade_invokeChain__");
+function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
+  return __facade_invokeChain__(request, env, ctx, dispatch, [
+    ...__facade_middleware__,
+    finalMiddleware
+  ]);
+}
+__name(__facade_invoke__, "__facade_invoke__");
+
+// .wrangler/tmp/bundle-0oruRV/middleware-loader.entry.ts
+var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
+  constructor(scheduledTime, cron, noRetry) {
+    this.scheduledTime = scheduledTime;
+    this.cron = cron;
+    this.#noRetry = noRetry;
+  }
+  static {
+    __name(this, "__Facade_ScheduledController__");
+  }
+  #noRetry;
+  noRetry() {
+    if (!(this instanceof ___Facade_ScheduledController__)) {
+      throw new TypeError("Illegal invocation");
+    }
+    this.#noRetry();
+  }
+};
+function wrapExportedHandler(worker) {
+  if (__INTERNAL_WRANGLER_MIDDLEWARE__ === void 0 || __INTERNAL_WRANGLER_MIDDLEWARE__.length === 0) {
+    return worker;
+  }
+  for (const middleware of __INTERNAL_WRANGLER_MIDDLEWARE__) {
+    __facade_register__(middleware);
+  }
+  const fetchDispatcher = /* @__PURE__ */ __name(function(request, env, ctx) {
+    if (worker.fetch === void 0) {
+      throw new Error("Handler does not export a fetch() function.");
+    }
+    return worker.fetch(request, env, ctx);
+  }, "fetchDispatcher");
+  return {
+    ...worker,
+    fetch(request, env, ctx) {
+      const dispatcher = /* @__PURE__ */ __name(function(type, init) {
+        if (type === "scheduled" && worker.scheduled !== void 0) {
+          const controller = new __Facade_ScheduledController__(
+            Date.now(),
+            init.cron ?? "",
+            () => {
+            }
+          );
+          return worker.scheduled(controller, env, ctx);
+        }
+      }, "dispatcher");
+      return __facade_invoke__(request, env, ctx, dispatcher, fetchDispatcher);
+    }
+  };
+}
+__name(wrapExportedHandler, "wrapExportedHandler");
+function wrapWorkerEntrypoint(klass) {
+  if (__INTERNAL_WRANGLER_MIDDLEWARE__ === void 0 || __INTERNAL_WRANGLER_MIDDLEWARE__.length === 0) {
+    return klass;
+  }
+  for (const middleware of __INTERNAL_WRANGLER_MIDDLEWARE__) {
+    __facade_register__(middleware);
+  }
+  return class extends klass {
+    #fetchDispatcher = /* @__PURE__ */ __name((request, env, ctx) => {
+      this.env = env;
+      this.ctx = ctx;
+      if (super.fetch === void 0) {
+        throw new Error("Entrypoint class does not define a fetch() function.");
+      }
+      return super.fetch(request);
+    }, "#fetchDispatcher");
+    #dispatcher = /* @__PURE__ */ __name((type, init) => {
+      if (type === "scheduled" && super.scheduled !== void 0) {
+        const controller = new __Facade_ScheduledController__(
+          Date.now(),
+          init.cron ?? "",
+          () => {
+          }
+        );
+        return super.scheduled(controller);
+      }
+    }, "#dispatcher");
+    fetch(request) {
+      return __facade_invoke__(
+        request,
+        this.env,
+        this.ctx,
+        this.#dispatcher,
+        this.#fetchDispatcher
+      );
+    }
+  };
+}
+__name(wrapWorkerEntrypoint, "wrapWorkerEntrypoint");
+var WRAPPED_ENTRY;
+if (typeof middleware_insertion_facade_default === "object") {
+  WRAPPED_ENTRY = wrapExportedHandler(middleware_insertion_facade_default);
+} else if (typeof middleware_insertion_facade_default === "function") {
+  WRAPPED_ENTRY = wrapWorkerEntrypoint(middleware_insertion_facade_default);
+}
+var middleware_loader_entry_default = WRAPPED_ENTRY;
+export {
+  UserStateSql,
+  __INTERNAL_WRANGLER_MIDDLEWARE__,
+  middleware_loader_entry_default as default
+};
+//# sourceMappingURL=index.js.map

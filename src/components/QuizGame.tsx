@@ -256,9 +256,9 @@ const QuizGame = () => {
         }}
       ></div>
 
-      {/* Hide header during gameplay; show on results */}
-      {showResults && (
-        <GameHeader coins={totalCoins} onNewGame={resetGame} />
+      {/* Show header on start and results; hide during gameplay */}
+      {(!gameStarted || showResults) && (
+        <GameHeader coins={totalCoins} onNewGame={resetGame} variant="quiz" />
       )}
 
       <div className="max-w-3xl mx-auto relative z-10 px-2 py-2 md:px-4 md:py-5 space-y-3 md:space-y-5">

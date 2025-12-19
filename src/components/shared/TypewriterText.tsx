@@ -6,6 +6,7 @@ interface TypewriterTextProps {
     onComplete?: () => void;
     className?: string;
     startDelay?: number;
+    soundSrc?: string;
 }
 
 const TypewriterText = ({
@@ -13,38 +14,49 @@ const TypewriterText = ({
     speed = 25,
     onComplete,
     className = "",
-    startDelay = 0
+    startDelay = 0,
+    soundSrc = '/media/quiz/typing.webm'
 }: TypewriterTextProps) => {
     const [displayedText, setDisplayedText] = useState("");
     const [isTyping, setIsTyping] = useState(false);
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
     useEffect(() => {
-        // Initialize audio
-        audioRef.current = new Audio('/media/quiz/typing.webm');
+        audioRef.current = new Audio(soundSrc);
+        audioRef.current.loop = true;
         audioRef.current.volume = 0.3;
 
         let timeoutId: NodeJS.Timeout;
-        let intervalId: NodeJS.Timeout;
 
         const startTyping = () => {
             setDisplayedText("");
-            setIsTyping(true);
+            if (text.length === 0) {
+                setIsTyping(false);
+                if (onComplete) onComplete();
+                return;
+            }
 
-            // Play sound once when starting (similar to QuestionCard implementation)
+            setIsTyping(true);
             audioRef.current?.play().catch(() => { });
 
             let i = 0;
-            intervalId = setInterval(() => {
+            const step = () => {
+                setDisplayedText(text.slice(0, i + 1));
+                i++;
                 if (i < text.length) {
-                    setDisplayedText((prev) => prev + text.charAt(i));
-                    i++;
+                    timeoutId = setTimeout(step, speed);
                 } else {
                     setIsTyping(false);
-                    clearInterval(intervalId);
+                    if (audioRef.current) {
+                        audioRef.current.pause();
+                        audioRef.current.currentTime = 0;
+                    }
                     if (onComplete) onComplete();
                 }
-            }, speed);
+            };
+
+            // kick off immediately to avoid any character gaps
+            step();
         };
 
         if (startDelay > 0) {
@@ -55,13 +67,13 @@ const TypewriterText = ({
 
         return () => {
             clearTimeout(timeoutId);
-            clearInterval(intervalId);
             if (audioRef.current) {
                 audioRef.current.pause();
+                audioRef.current.currentTime = 0;
                 audioRef.current = null;
             }
         };
-    }, [text, speed, startDelay, onComplete]);
+    }, [text, speed, startDelay, onComplete, soundSrc]);
 
     return (
         <span className={className}>

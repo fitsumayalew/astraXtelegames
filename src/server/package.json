@@ -9,9 +9,12 @@
     "deploy": "bunx wrangler deploy",
     "check": "bunx tsc --noEmit"
   },
+  "dependencies": {
+    "@cloudflare/actors": "^0.0.1-beta.6"
+  },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241218",
     "typescript": "^5.4.5",
-    "wrangler": "^3.80.1"
+    "wrangler": "^4.56.0"
   }
 }

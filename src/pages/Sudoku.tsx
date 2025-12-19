@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import confetti from "canvas-confetti";
 import { Clock, Grid3x3, Target, Lightbulb, CheckCircle, Info, Volume2, VolumeX } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import TypewriterText from "@/components/shared/TypewriterText";
 import sudokuHero from "@/assets/sudoku-hero.png";
 
 const HINT_COST = 10;
@@ -302,12 +303,12 @@ const Sudoku = () => {
       {(!gameStarted && !gameOver) && (
         <>
           <div
-            className="absolute inset-0 z-0 bg-center bg-cover pointer-events-none"
-            style={{ backgroundImage: 'url(/images/sudoku/bghash-sheet0.png)', backgroundRepeat: 'no-repeat', backgroundSize: 'cover' }}
+            className="absolute inset-0 z-0 pointer-events-none"
+            style={{ backgroundImage: 'url(/images/sudoku/bghash-sheet0.png)', backgroundRepeat: 'repeat', backgroundSize: 'auto', backgroundPosition: 'top left' }}
           />
           <div
-            className="absolute inset-0 z-0 bg-center bg-cover pointer-events-none"
-            style={{ backgroundImage: 'url(/images/sudoku/bgsquares-sheet0.png)', backgroundRepeat: 'no-repeat', backgroundSize: 'cover' }}
+            className="absolute inset-0 z-0 pointer-events-none"
+            style={{ backgroundImage: 'url(/images/sudoku/bgsquares-sheet0.png)', backgroundRepeat: 'repeat', backgroundSize: 'auto', backgroundPosition: 'top left' }}
           />
         </>
       )}
@@ -322,7 +323,9 @@ const Sudoku = () => {
         />
       )}
 
-      <GameHeader coins={totalCoins} onNewGame={handleNewGame} gameStarted={gameStarted} />
+      {(!gameStarted || gameOver) && (
+        <GameHeader coins={totalCoins} onNewGame={handleNewGame} gameStarted={gameStarted && !gameOver} variant="sudoku" />
+      )}
 
       <div className="relative z-10 max-w-5xl mx-auto px-4 py-4 md:py-6">
         {!gameStarted && !gameOver && (
@@ -457,19 +460,44 @@ const Sudoku = () => {
           />
         )}
 
-        {/* How to play dialog */}
+        {/* How to play dialog (styled like Wordle's) */}
         <Dialog open={howToPlayOpen} onOpenChange={setHowToPlayOpen}>
-          <DialogContent className="w-[calc(100vw-2rem)] sm:w-full sm:max-w-md px-4">
+          <DialogContent className="w-[calc(100vw-2rem)] sm:w-full sm:max-w-lg max-h-[85vh] overflow-y-auto bg-purple-100/80 border-purple-300 px-4">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><Grid3x3 className="w-5 h-5" /> How to play Sudoku</DialogTitle>
-              <DialogDescription>
-                Fill every row, column, and 3×3 box with digits 1-9 without repeating a number in any row, column, or box.
+              <DialogTitle className="flex items-center gap-2 text-purple-900">
+                <Grid3x3 className="w-5 h-5" />
+                <span>
+                  {/* Faster typing for popups */}
+                  <TypewriterText text="How to play Sudoku" speed={15} soundSrc="/media/quiz/typing.webm" />
+                </span>
+              </DialogTitle>
+              <DialogDescription className="text-purple-800">
+                <TypewriterText
+                  text="Fill the 9×9 grid so each row, column, and 3×3 box contains digits 1–9 with no repeats. Use hints sparingly and check progress when stuck."
+                  speed={15}
+                  soundSrc="/media/quiz/typing.webm"
+                />
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-3 text-sm text-muted-foreground">
-              <div className="p-3 rounded-xl bg-secondary/20 border border-border">Tap a cell, then use the number pad to fill it. Fixed cells are highlighted.</div>
-              <div className="p-3 rounded-xl bg-secondary/20 border border-border">You have {FREE_HINTS} free hints; after that each hint costs {HINT_COST} coins.</div>
-              <div className="p-3 rounded-xl bg-secondary/20 border border-border">Use Check to highlight incorrect cells. Time runs out based on difficulty.</div>
+            <div className="space-y-3 text-sm">
+              {sudokuInstructions.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-start gap-3 p-3 bg-purple-100/60 rounded-lg border border-purple-300"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-300 to-violet-400 flex items-center justify-center shadow-md flex-shrink-0">
+                    <item.icon className="w-5 h-5 text-purple-900" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-semibold text-purple-900 text-sm">
+                      <TypewriterText text={item.title} speed={15} soundSrc="/media/quiz/typing.webm" />
+                    </h4>
+                    <div className="text-sm text-purple-800 leading-relaxed">
+                      <TypewriterText text={item.description} speed={18} soundSrc="/media/quiz/typing.webm" />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </DialogContent>
         </Dialog>

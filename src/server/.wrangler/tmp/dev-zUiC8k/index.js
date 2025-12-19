@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/bundle-SmG3W9/checked-fetch.js
+// .wrangler/tmp/bundle-C1Zf4i/checked-fetch.js
 var urls = /* @__PURE__ */ new Set();
 function checkURL(request, init) {
   const url = request instanceof URL ? request : new URL(
@@ -24,21 +24,6 @@ globalThis.fetch = new Proxy(globalThis.fetch, {
     const [request, init] = argArray;
     checkURL(request, init);
     return Reflect.apply(target, thisArg, argArray);
-  }
-});
-
-// .wrangler/tmp/bundle-SmG3W9/strip-cf-connecting-ip-header.js
-function stripCfConnectingIPHeader(input, init) {
-  const request = new Request(input, init);
-  request.headers.delete("CF-Connecting-IP");
-  return request;
-}
-__name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
-globalThis.fetch = new Proxy(globalThis.fetch, {
-  apply(target, thisArg, argArray) {
-    return Reflect.apply(target, thisArg, [
-      stripCfConnectingIPHeader.apply(null, argArray)
-    ]);
   }
 });
 
@@ -626,23 +611,20 @@ function revealLetterUnique(session) {
   const revealed = new Set(session.revealedPositions ?? []);
   const available = [];
   for (let i = 0; i < word.length; i += 1) {
-    if (!revealed.has(i))
-      available.push(i);
+    if (!revealed.has(i)) available.push(i);
   }
   const position = available.length > 0 ? available[randomIndex(available.length)] : 0;
   return { letter: word[position], position };
 }
 __name(revealLetterUnique, "revealLetterUnique");
 function isSessionActive(session, now) {
-  if (!session)
-    return false;
+  if (!session) return false;
   const expiresAt = Date.parse(session.expiresAt);
   return now < expiresAt;
 }
 __name(isSessionActive, "isSessionActive");
 function remainingMs(session, now) {
-  if (!session)
-    return 0;
+  if (!session) return 0;
   return Math.max(0, Date.parse(session.expiresAt) - now);
 }
 __name(remainingMs, "remainingMs");
@@ -689,8 +671,7 @@ function evaluateGuess(guess, target) {
     }
   }
   for (let i = 0; i < target.length; i += 1) {
-    if (result[i] === "correct")
-      continue;
+    if (result[i] === "correct") continue;
     const g = guess[i];
     if (targetCounts[g] > 0) {
       result[i] = "present";
@@ -861,27 +842,21 @@ var QUIZ_POOL_INTERNAL = [
 ];
 function filterQuizPool(limit, category, difficulty) {
   let list = QUIZ_POOL_INTERNAL;
-  if (category)
-    list = list.filter((q) => q.category === category);
-  if (difficulty)
-    list = list.filter((q) => q.difficulty === difficulty);
-  if (typeof limit === "number" && Number.isFinite(limit))
-    list = list.slice(0, Math.max(0, limit));
+  if (category) list = list.filter((q) => q.category === category);
+  if (difficulty) list = list.filter((q) => q.difficulty === difficulty);
+  if (typeof limit === "number" && Number.isFinite(limit)) list = list.slice(0, Math.max(0, limit));
   return list.map(({ correctIndex: _ci, ...rest }) => ({ ...rest }));
 }
 __name(filterQuizPool, "filterQuizPool");
 function sanitizeQuestionForClient(q, optionOrder) {
-  if (!optionOrder)
-    return q;
+  if (!optionOrder) return q;
   const shuffledOptions = optionOrder.map((i) => q.options[i]);
   return { ...q, options: shuffledOptions };
 }
 __name(sanitizeQuestionForClient, "sanitizeQuestionForClient");
 function ensureQuizSessionServerState(session) {
-  if (!session._server)
-    session._server = { perQuestion: {}, lastAssistTimestamps: [] };
-  if (!session._server.lastAssistTimestamps)
-    session._server.lastAssistTimestamps = [];
+  if (!session._server) session._server = { perQuestion: {}, lastAssistTimestamps: [] };
+  if (!session._server.lastAssistTimestamps) session._server.lastAssistTimestamps = [];
 }
 __name(ensureQuizSessionServerState, "ensureQuizSessionServerState");
 function rateLimitAssist(session, now) {
@@ -896,16 +871,14 @@ function rateLimitAssist(session, now) {
 }
 __name(rateLimitAssist, "rateLimitAssist");
 function getCurrentQuestionIndex(session) {
-  if (session.pointer < 0 || session.pointer >= session.questionOrder.length)
-    return null;
+  if (session.pointer < 0 || session.pointer >= session.questionOrder.length) return null;
   return session.questionOrder[session.pointer] ?? null;
 }
 __name(getCurrentQuestionIndex, "getCurrentQuestionIndex");
 function getOrCreateShuffleForQuestion(session, poolIndex) {
   ensureQuizSessionServerState(session);
   const entry = session._server.perQuestion[poolIndex];
-  if (entry)
-    return entry.optionShuffle;
+  if (entry) return entry.optionShuffle;
   const correctIndex = QUIZ_POOL_INTERNAL[poolIndex].correctIndex;
   const order = shuffleArray([...Array(QUIZ_OPTIONS_COUNT).keys()]);
   session._server.perQuestion[poolIndex] = { correctIndex, optionShuffle: order };
@@ -1002,6 +975,9 @@ var src_default = {
   }
 };
 var UserState = class {
+  static {
+    __name(this, "UserState");
+  }
   state;
   constructor(state) {
     this.state = state;
@@ -1020,80 +996,59 @@ var UserState = class {
     try {
       switch (pathname) {
         case "/api/user/init":
-          if (request.method !== "POST")
-            return this.methodNotAllowed(origin);
+          if (request.method !== "POST") return this.methodNotAllowed(origin);
           return await this.handleInit(userId, origin);
         case "/api/user":
-          if (request.method !== "GET")
-            return this.methodNotAllowed(origin);
+          if (request.method !== "GET") return this.methodNotAllowed(origin);
           return await this.handleGet(userId, origin);
         case "/api/coins/add":
-          if (request.method !== "POST")
-            return this.methodNotAllowed(origin);
+          if (request.method !== "POST") return this.methodNotAllowed(origin);
           return await this.handleAddCoins(request, userId, origin);
         case "/api/coins/spend":
-          if (request.method !== "POST")
-            return this.methodNotAllowed(origin);
+          if (request.method !== "POST") return this.methodNotAllowed(origin);
           return await this.handleSpendCoins(request, userId, origin);
         case "/api/stats/update":
-          if (request.method !== "POST")
-            return this.methodNotAllowed(origin);
+          if (request.method !== "POST") return this.methodNotAllowed(origin);
           return await this.handleUpdateStats(request, userId, origin);
         case "/api/wordle/word":
-          if (request.method !== "GET")
-            return this.methodNotAllowed(origin);
+          if (request.method !== "GET") return this.methodNotAllowed(origin);
           return await this.handleWordleWord(userId, origin);
         case "/api/wordle/validate":
-          if (request.method !== "POST")
-            return this.methodNotAllowed(origin);
+          if (request.method !== "POST") return this.methodNotAllowed(origin);
           return await this.handleWordleValidate(request, userId, origin);
         case "/api/wordle/hint":
-          if (request.method !== "POST")
-            return this.methodNotAllowed(origin);
+          if (request.method !== "POST") return this.methodNotAllowed(origin);
           return await this.handleWordleAllowance(userId, origin, "hint");
         case "/api/wordle/search":
-          if (request.method !== "POST")
-            return this.methodNotAllowed(origin);
+          if (request.method !== "POST") return this.methodNotAllowed(origin);
           return await this.handleWordleAllowance(userId, origin, "search");
         case "/api/quiz/questions":
-          if (request.method !== "GET")
-            return this.methodNotAllowed(origin);
+          if (request.method !== "GET") return this.methodNotAllowed(origin);
           return await this.handleQuizQuestions(request, userId, origin);
         case "/api/quiz/session/start":
-          if (request.method !== "POST")
-            return this.methodNotAllowed(origin);
+          if (request.method !== "POST") return this.methodNotAllowed(origin);
           return await this.handleQuizSessionStart(request, userId, origin);
         case "/api/sudoku/start":
-          if (request.method !== "POST")
-            return this.methodNotAllowed(origin);
+          if (request.method !== "POST") return this.methodNotAllowed(origin);
           return await this.handleSudokuStart(request, userId, origin);
         case "/api/sudoku/check":
-          if (request.method !== "POST")
-            return this.methodNotAllowed(origin);
+          if (request.method !== "POST") return this.methodNotAllowed(origin);
           return await this.handleSudokuCheck(request, userId, origin);
         case "/api/sudoku/hint":
-          if (request.method !== "POST")
-            return this.methodNotAllowed(origin);
+          if (request.method !== "POST") return this.methodNotAllowed(origin);
           return await this.handleSudokuHint(request, userId, origin);
         default:
           if (pathname.startsWith("/api/quiz/session/")) {
             const parts = pathname.split("/");
             const id = parts[4];
             const action = parts[5];
-            if (!id)
-              return jsonResponse({ error: "Invalid session id" }, 400, origin);
-            if (request.method !== "POST")
-              return this.methodNotAllowed(origin);
-            if (action === "answer")
-              return await this.handleQuizAnswer(request, userId, origin, id);
-            if (action === "assist" && parts[6] === "fifty")
-              return await this.handleQuizAssistFifty(userId, origin, id);
-            if (action === "assist" && parts[6] === "freeze")
-              return await this.handleQuizAssistFreeze(userId, origin, id);
-            if (action === "skip")
-              return await this.handleQuizSkip(userId, origin, id);
-            if (action === "end")
-              return await this.handleQuizEnd(userId, origin, id);
+            if (!id) return jsonResponse({ error: "Invalid session id" }, 400, origin);
+            if (request.method !== "POST") return this.methodNotAllowed(origin);
+            if (action === "answer") return await this.handleQuizAnswer(request, userId, origin, id);
+            if (action === "assist" && parts[6] === "fifty") return await this.handleQuizAssistFifty(userId, origin, id);
+            if (action === "assist" && parts[6] === "freeze") return await this.handleQuizAssistFreeze(userId, origin, id);
+            if (action === "skip") return await this.handleQuizSkip(userId, origin, id);
+            if (action === "end") return await this.handleQuizEnd(userId, origin, id);
           }
           return jsonResponse({ error: "Not found" }, 404, origin);
       }
@@ -1312,17 +1267,14 @@ var UserState = class {
     }
     const isValid = /* @__PURE__ */ __name((g, r, c, n) => {
       for (let x = 0; x < 9; x++) {
-        if (g[r][x] === n)
-          return false;
-        if (g[x][c] === n)
-          return false;
+        if (g[r][x] === n) return false;
+        if (g[x][c] === n) return false;
       }
       const br = Math.floor(r / 3) * 3;
       const bc = Math.floor(c / 3) * 3;
       for (let i = 0; i < 3; i++) {
         for (let j = 0; j < 3; j++) {
-          if (g[br + i][bc + j] === n)
-            return false;
+          if (g[br + i][bc + j] === n) return false;
         }
       }
       return true;
@@ -1334,8 +1286,7 @@ var UserState = class {
             for (let n = 1; n <= 9; n++) {
               if (isValid(g, r, c, n)) {
                 g[r][c] = n;
-                if (solve(g))
-                  return true;
+                if (solve(g)) return true;
                 g[r][c] = null;
               }
             }
@@ -1400,15 +1351,13 @@ var UserState = class {
       return badRequest("Invalid payload", origin);
     }
     const session = await this.loadSudokuSession(sessionId);
-    if (!session)
-      return jsonResponse({ error: "Session not found" }, 404, origin);
+    if (!session) return jsonResponse({ error: "Session not found" }, 404, origin);
     const invalid = [];
     let complete = true;
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
         const cur = grid[r][c];
-        if (cur === null)
-          complete = false;
+        if (cur === null) complete = false;
         if (cur !== null && cur !== session.solution[r][c]) {
           invalid.push(`${r}-${c}`);
         }
@@ -1426,13 +1375,11 @@ var UserState = class {
       return badRequest("Invalid payload", origin);
     }
     const session = await this.loadSudokuSession(sessionId);
-    if (!session)
-      return jsonResponse({ error: "Session not found" }, 404, origin);
+    if (!session) return jsonResponse({ error: "Session not found" }, 404, origin);
     const empties = [];
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
-        if (grid[r][c] === null)
-          empties.push([r, c]);
+        if (grid[r][c] === null) empties.push([r, c]);
       }
     }
     if (empties.length === 0) {
@@ -1460,8 +1407,7 @@ var UserState = class {
     const limitedOrder = typeof limit === "number" && Number.isFinite(limit) ? order.slice(0, Math.max(0, limit)) : order;
     const mapped = limitedOrder.map((idx) => {
       const base = pool[idx] ?? QUIZ_POOL_INTERNAL[idx];
-      if (!base)
-        return null;
+      if (!base) return null;
       const shuffle = getOrCreateShuffleForQuestion(session, idx);
       return sanitizeQuestionForClient(base, shuffle);
     }).filter((q) => Boolean(q));
@@ -1531,8 +1477,7 @@ var UserState = class {
     }
     session.pointer += 1;
     const done = session.pointer >= session.questionOrder.length || session.lives <= 0;
-    if (done)
-      session.state = "ended";
+    if (done) session.state = "ended";
     session.updatedAt = nowIso();
     record.updatedAt = nowIso();
     await this.saveRecord(record);
@@ -1556,12 +1501,10 @@ var UserState = class {
     }
     rateLimitAssist(session, now);
     const poolIndex = getCurrentQuestionIndex(session);
-    if (poolIndex === null)
-      return jsonResponse({ error: "No current question" }, 400, origin);
+    if (poolIndex === null) return jsonResponse({ error: "No current question" }, 400, origin);
     let charged = false;
     if (session.assistsUsed.fifty >= QUIZ_FREE_FIFTY) {
-      if (record.coins < QUIZ_COST_FIFTY)
-        return jsonResponse({ error: "Insufficient balance" }, 400, origin);
+      if (record.coins < QUIZ_COST_FIFTY) return jsonResponse({ error: "Insufficient balance" }, 400, origin);
       record.coins -= QUIZ_COST_FIFTY;
       charged = true;
     }
@@ -1571,8 +1514,7 @@ var UserState = class {
     const wrongClientIndices = [];
     for (let i = 0; i < QUIZ_OPTIONS_COUNT; i += 1) {
       const orig = mapping[i];
-      if (orig !== correctOriginal)
-        wrongClientIndices.push(i);
+      if (orig !== correctOriginal) wrongClientIndices.push(i);
     }
     const hide = shuffleArray(wrongClientIndices).slice(0, 2);
     record.updatedAt = nowIso();
@@ -1594,8 +1536,7 @@ var UserState = class {
     }
     let charged = false;
     if (session.assistsUsed.freeze >= QUIZ_FREE_FREEZE) {
-      if (record.coins < QUIZ_COST_FREEZE)
-        return jsonResponse({ error: "Insufficient balance" }, 400, origin);
+      if (record.coins < QUIZ_COST_FREEZE) return jsonResponse({ error: "Insufficient balance" }, 400, origin);
       record.coins -= QUIZ_COST_FREEZE;
       charged = true;
     }
@@ -1614,8 +1555,7 @@ var UserState = class {
       return jsonResponse({ error: "No active session" }, 409, origin);
     }
     const poolIndex = getCurrentQuestionIndex(session);
-    if (poolIndex === null)
-      return jsonResponse({ error: "No current question" }, 400, origin);
+    if (poolIndex === null) return jsonResponse({ error: "No current question" }, 400, origin);
     const current = session.questionOrder.splice(session.pointer, 1)[0];
     session.questionOrder.push(current);
     session.pointer += 1;
@@ -1629,8 +1569,7 @@ var UserState = class {
   async handleQuizEnd(userId, origin, sessionId) {
     const record = await this.getRecord(userId);
     const session = record.quizSession;
-    if (!session || session.id !== sessionId)
-      return jsonResponse({ error: "No session" }, 404, origin);
+    if (!session || session.id !== sessionId) return jsonResponse({ error: "No session" }, 404, origin);
     session.state = "ended";
     session.updatedAt = nowIso();
     record.updatedAt = nowIso();
@@ -1649,7 +1588,6 @@ var UserState = class {
     }, 200, origin);
   }
 };
-__name(UserState, "UserState");
 
 // node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
 var drainBody = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx) => {
@@ -1692,7 +1630,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-SmG3W9/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-C1Zf4i/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -1724,22 +1662,24 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-SmG3W9/middleware-loader.entry.ts
-var __Facade_ScheduledController__ = class {
+// .wrangler/tmp/bundle-C1Zf4i/middleware-loader.entry.ts
+var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
     this.cron = cron;
     this.#noRetry = noRetry;
   }
+  static {
+    __name(this, "__Facade_ScheduledController__");
+  }
   #noRetry;
   noRetry() {
-    if (!(this instanceof __Facade_ScheduledController__)) {
+    if (!(this instanceof ___Facade_ScheduledController__)) {
       throw new TypeError("Illegal invocation");
     }
     this.#noRetry();
   }
 };
-__name(__Facade_ScheduledController__, "__Facade_ScheduledController__");
 function wrapExportedHandler(worker) {
   if (__INTERNAL_WRANGLER_MIDDLEWARE__ === void 0 || __INTERNAL_WRANGLER_MIDDLEWARE__.length === 0) {
     return worker;
@@ -1780,15 +1720,15 @@ function wrapWorkerEntrypoint(klass) {
     __facade_register__(middleware);
   }
   return class extends klass {
-    #fetchDispatcher = (request, env, ctx) => {
+    #fetchDispatcher = /* @__PURE__ */ __name((request, env, ctx) => {
       this.env = env;
       this.ctx = ctx;
       if (super.fetch === void 0) {
         throw new Error("Entrypoint class does not define a fetch() function.");
       }
       return super.fetch(request);
-    };
-    #dispatcher = (type, init) => {
+    }, "#fetchDispatcher");
+    #dispatcher = /* @__PURE__ */ __name((type, init) => {
       if (type === "scheduled" && super.scheduled !== void 0) {
         const controller = new __Facade_ScheduledController__(
           Date.now(),
@@ -1798,7 +1738,7 @@ function wrapWorkerEntrypoint(klass) {
         );
         return super.scheduled(controller);
       }
-    };
+    }, "#dispatcher");
     fetch(request) {
       return __facade_invoke__(
         request,
